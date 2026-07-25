@@ -79,7 +79,7 @@ A native macOS app that locates local Marvel Snap data, generates a normalized s
 ### ⬜ Not started
 
 - Automatic updates.
-- Match tracking, overlay, and multiple destinations.
+- Unique per-install CA and automated certificate trust for the overlay.
 
 ## Roadmap
 
@@ -187,6 +187,7 @@ Criteria:
 - Live match tracking: opponent name, revealed cards, locations, and turn. ✅
 - Bot detection via MarvelSnap.pro's known-AI lists. ✅
 - Opponent deck prediction from MarvelSnap.pro archetypes, with a confidence score and top candidates. ✅
+- Live cube value and snap count from the WebSocket, and win/loss result (cubes won/lost) from local `GameState.json`. ✅
 - Floating SwiftUI overlay, localized in English and Brazilian Portuguese. ✅
 - Bundle promoted to `1.1.0`.
 
@@ -198,8 +199,7 @@ Run the final signed and notarized DMG smoke test for `1.1.0`.
 
 Add only when supported by proven demand:
 
-- automate the live-overlay certificate trust and generate a unique CA per install;
-- match result and per-deck session stats (needs the game's HTTP/2 API channel);
+- per-deck session stats aggregated from `GameState.json` match results;
 - complete SQLite history, only if lightweight history becomes insufficient;
 - multiple destinations;
 - deck recommendations.

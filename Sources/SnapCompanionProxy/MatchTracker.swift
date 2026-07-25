@@ -7,6 +7,8 @@ struct MatchSnapshot: Equatable {
     var locations: [String] = []
     var turn = 0
     var totalTurns = 0
+    var cubeValue = 0
+    var snaps = 0        // times stakes were raised this match
 
     var json: Data? {
         try? JSONSerialization.data(withJSONObject: [
@@ -15,6 +17,8 @@ struct MatchSnapshot: Equatable {
             "locations": locations,
             "turn": turn,
             "totalTurns": totalTurns,
+            "cubeValue": cubeValue,
+            "snaps": snaps,
         ])
     }
 }
@@ -27,6 +31,8 @@ final class MatchTracker {
     private var cardOwner: [Int: Int] = [:]      // card entityId -> owner (player) entityId
     private var revealed: [Int: String] = [:]    // card entityId -> CardDefId
     private var locations: [Int: String] = [:]   // location entityId -> LocationDefId
+    private var cubeValue = 0
+    private var snaps = 0
     private var snapshot = MatchSnapshot()
 
     /// Returns the snapshot if this message changed it.
@@ -40,6 +46,11 @@ final class MatchTracker {
             let type = change["$type"] as? String ?? ""
             if type.contains("GameCreateChange") {
                 reset()
+                cubeValue = change["StartingCubeValue"] as? Int ?? 1
+            } else if type.contains("GameStakesRaisedChange") {
+                // A snap: cube escalates (2 → 4 → 8). TotalRaisedCount counts snaps.
+                if let cv = change["CubeValue"] as? Int { cubeValue = cv }
+                if let n = change["TotalRaisedCount"] as? Int { snaps = n }
             } else if type.contains("GameCreatePlayerChange") {
                 if let id = change["EntityId"] as? Int {
                     let info = change["PlayerInfo"] as? [String: Any]
@@ -69,12 +80,15 @@ final class MatchTracker {
         snapshot.opponentName = opponentName
         snapshot.opponentCards = opponentCards()
         snapshot.locations = locations.sorted { $0.key < $1.key }.map(\.value)
+        snapshot.cubeValue = cubeValue
+        snapshot.snaps = snaps
 
         return snapshot
     }
 
     private func reset() {
         players.removeAll(); cardOwner.removeAll(); revealed.removeAll(); locations.removeAll()
+        cubeValue = 0; snaps = 0
         snapshot = MatchSnapshot()
     }
 

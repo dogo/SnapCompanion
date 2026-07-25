@@ -19,7 +19,7 @@ A native macOS companion for Marvel Snap. It reads your local game data to brows
 ## Two things it does
 
 - **Collection, decks & sync** — reads `ProfileState.json` and `CollectionState.json` locally (never modifying them) and keeps your account, collection, and decks in sync with MarvelSnap.pro.
-- **Live opponent overlay** (opt-in, experimental) — during a match, a floating overlay shows the opponent's revealed cards, a predicted archetype with a confidence score, a bot flag, the turn, and the locations. See [Live opponent tracking](#live-opponent-tracking).
+- **Live opponent overlay** (opt-in, experimental) — during a match, a floating overlay shows the opponent's revealed cards, a predicted archetype with a confidence score, a bot flag, the turn, the locations, the live cube value and snap count, and the win/loss result. See [Live opponent tracking](#live-opponent-tracking).
 
 ## Features
 
@@ -41,6 +41,7 @@ A native macOS companion for Marvel Snap. It reads your local game data to brows
 - Revealed cards, updated live as they're played.
 - Deck prediction from MarvelSnap.pro archetypes, with a confidence score and top candidates.
 - Current turn and the three locations, with real art.
+- Live cube value and snap count, and a win/loss result with cubes won or lost.
 
 **Platform**
 - Native SwiftUI dashboard and menu bar controls.
@@ -67,7 +68,7 @@ One-time setup:
 
 3. Menu bar → **Show match overlay**, then start a Marvel Snap match.
 
-> Experimental. The bundled certificate is a shared development CA — a production build should generate a unique certificate per install so the private key can't be extracted. Cube value, snaps, and the final result live on the game's HTTP/2 API channel and are not read.
+> Experimental. The bundled certificate is a shared development CA — a production build should generate a unique certificate per install so the private key can't be extracted. The cube value and snap count come from the same WebSocket, and the match result from the local `GameState.json`; the game's HTTP/2 API channel is certificate-pinned and left untouched.
 
 ## Build (development)
 

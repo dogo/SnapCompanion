@@ -61,7 +61,7 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
                 }
                 let sni = SNIParser.hostname(data) ?? ""
                 // Only the realtime WebSocket host. The API host is HTTP/2 and
-                // MITMing it triggers a reconnect storm — not worth it.
+                // certificate-pinned: MITMing it triggers a reconnect storm.
                 if sni.contains("-ws-cf.nvprod.snapgametech.com"), let context = self.serverContext {
                     self.log.info("MITM \(sni, privacy: .public)")
                     self.retain(FlowMITM(

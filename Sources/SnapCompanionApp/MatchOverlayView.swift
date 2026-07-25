@@ -29,14 +29,44 @@ struct MatchOverlayView: View {
                 .accessibilityLabel(Text(.overlayHide))
             }
 
-            if model.matchTurn > 0 {
-                Label {
-                    Text(.overlayTurn(model.matchTurn, model.matchTotalTurns))
-                } icon: {
-                    Image(systemName: "hourglass")
+            if let result = model.match?.result {
+                HStack(spacing: 8) {
+                    Image(systemName: result.didWin ? "trophy.fill" : "xmark.seal.fill")
+                    Text(result.didWin ? "You won +\(result.cubes) cubes" : "You lost −\(result.cubes) cubes")
+                        .font(.subheadline.bold())
                 }
-                .font(.caption).foregroundStyle(.secondary)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(result.didWin ? Color.green.opacity(0.85) : Color.red.opacity(0.85),
+                            in: .rect(cornerRadius: 10))
             }
+
+            HStack(spacing: 12) {
+                if model.matchTurn > 0 {
+                    Label {
+                        Text(.overlayTurn(model.matchTurn, model.matchTotalTurns))
+                    } icon: {
+                        Image(systemName: "hourglass")
+                    }
+                }
+                if model.matchCubeValue > 0 {
+                    Label {
+                        Text("\(model.matchCubeValue)")
+                    } icon: {
+                        Image(systemName: "cube.fill")
+                    }
+                }
+                if model.matchSnaps > 0 {
+                    Label {
+                        Text("Snap ×\(model.matchSnaps)")
+                    } icon: {
+                        Image(systemName: "flame.fill")
+                    }
+                    .foregroundStyle(.orange)
+                }
+            }
+            .font(.caption).foregroundStyle(.secondary)
 
             if model.locations.isEmpty == false {
                 HStack(spacing: 6) {

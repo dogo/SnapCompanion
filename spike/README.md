@@ -18,11 +18,20 @@ A working, fully native live Marvel Snap opponent overlay.
    (MarvelSnap.pro `getbots`), turn, hexagon **locations**, revealed cards, and a
    **deck prediction** with confidence (`DeckPredictor` + MarvelSnap.pro `getmeta`).
 
-## What lives where the WebSocket can't reach
+## Cube value, snaps, and match result
 
-The cube value, snap events, and match result (cubes won/lost) are on the game's
-**HTTP/2 API** channel, not the WebSocket. MITMing that host causes a reconnect
-storm and would need a full HTTP/2 MITM — out of scope, so those are dropped.
+These come from two sources the app already has, not the HTTP/2 API host:
+
+- **Cube value + snap count** ride the same realtime WebSocket. `MatchTracker`
+  reads `GameCreateChange.StartingCubeValue` and each `GameStakesRaisedChange`
+  (`CubeValue` / `TotalRaisedCount`) into the snapshot.
+- **Match result** (won/lost, cubes at stake) is in the local `GameState.json`
+  (`ClientResultMessage.GameResultAccountItems`, matched by the client's own
+  `AccountId`); `MatchState` reads it once the match ends.
+
+The HTTP/2 API host (`*-cf.nvprod.snapgametech.com`) is **certificate-pinned**:
+the game rejects our leaf and reconnect-storms, so it's left as passthrough. An
+early attempt to MITM it as HTTP/2 confirmed the storm and read nothing.
 
 ## ponytail / TODO
 

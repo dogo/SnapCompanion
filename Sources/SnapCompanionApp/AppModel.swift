@@ -31,6 +31,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var botStatus: BotStatus = .human
     @Published private(set) var matchTurn = 0
     @Published private(set) var matchTotalTurns = 0
+    @Published private(set) var matchCubeValue = 0
+    @Published private(set) var matchSnaps = 0
     @Published private(set) var locations: [String] = []
     @Published private(set) var deckPredictions: [DeckPrediction] = []
     @Published private(set) var isOverlayVisible = false
@@ -309,6 +311,8 @@ final class AppModel: ObservableObject {
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         matchTurn = obj["turn"] as? Int ?? 0
         matchTotalTurns = obj["totalTurns"] as? Int ?? 0
+        matchCubeValue = obj["cubeValue"] as? Int ?? 0
+        matchSnaps = obj["snaps"] as? Int ?? 0
         locations = obj["locations"] as? [String] ?? []
         let name = obj["opponentName"] as? String ?? ""
         if name != opponentName {
