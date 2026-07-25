@@ -79,7 +79,6 @@ A native macOS app that locates local Marvel Snap data, generates a normalized s
 ### ⬜ Not started
 
 - Automatic updates.
-- Unique per-install CA and automated certificate trust for the overlay.
 
 ## Roadmap
 
@@ -188,6 +187,7 @@ Criteria:
 - Bot detection via MarvelSnap.pro's known-AI lists. ✅
 - Opponent deck prediction from MarvelSnap.pro archetypes, with a confidence score and top candidates. ✅
 - Live cube value and snap count from the WebSocket, and win/loss result (cubes won/lost) from local `GameState.json`. ✅
+- Unique CA + leaf generated per install (no bundled key), trusted automatically in the user domain by the app. ✅
 - Floating SwiftUI overlay, localized in English and Brazilian Portuguese. ✅
 - Bundle promoted to `1.1.0`.
 

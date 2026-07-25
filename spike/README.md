@@ -40,7 +40,10 @@ on the extension's first run; the CA private key is discarded right after signin
 the one leaf, and the leaf key + chain live 0600 in the extension's container. The
 CA cert is copied to `/tmp/snapcompanion-ca.pem` for the manual trust step.
 
-## TODO
+## Trusting the CA
 
-Automate the certificate trust so the manual `security add-trusted-cert` isn't
-needed (guarded by macOS — needs its own pass).
+The extension is sandboxed and can't touch the trust store; the admin/system
+domain needs root. So the **app** (`CATrust`, running as the user) adds the CA to
+the **user** trust domain with an in-process `SecTrustSettingsSetTrustSettings`
+call — one login-keychain prompt, no `sudo`. The game runs as the same user and
+honors user-domain trust. Triggered on enable and from a menu item.

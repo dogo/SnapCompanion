@@ -38,6 +38,14 @@ struct MenuBarContentView: View {
             Text(.liveTracking(model.proxy.status))
         }
 
+        // Trusts the per-install MITM CA (one admin prompt). Auto-runs on enable
+        // too; here as an explicit re-trigger.
+        Button {
+            DispatchQueue.global(qos: .userInitiated).async { CATrust.ensureTrusted() }
+        } label: {
+            Text("Trust interception certificate")
+        }
+
         Divider()
 
         Button(action: quit) {

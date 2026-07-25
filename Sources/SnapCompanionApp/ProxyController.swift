@@ -39,6 +39,9 @@ final class ProxyController: NSObject, ObservableObject, @unchecked Sendable {
                     do {
                         try manager.connection.startVPNTunnel()
                         self.setStatus("proxy running")
+                        // The extension just generated its per-install CA; trust it
+                        // (one admin prompt, only if not already trusted).
+                        DispatchQueue.global(qos: .userInitiated).async { CATrust.ensureTrusted() }
                     } catch {
                         self.setStatus("start failed: \(error.localizedDescription)")
                     }

@@ -58,14 +58,8 @@ The overlay reads the current match from the game's realtime connection through 
 
 One-time setup:
 
-1. Open SnapCompanion → menu bar → **Live opponent tracking**. Approve the system extension when macOS prompts (System Settings → General → Login Items & Extensions → Network Extensions). On first enable the extension generates a **unique CA + leaf for this install** and writes the CA to `/tmp/snapcompanion-ca.pem`.
-2. Trust that interception certificate. This step is currently manual:
-
-   ```bash
-   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \
-     /tmp/snapcompanion-ca.pem
-   ```
-
+1. Open SnapCompanion → menu bar → **Live opponent tracking**. Approve the system extension when macOS prompts (System Settings → General → Login Items & Extensions → Network Extensions). On first enable the extension generates a **unique CA + leaf for this install**.
+2. The app trusts that CA for you (user trust domain) — approve the one **keychain prompt** macOS shows. No Terminal, no `sudo`. If it's ever missed, menu bar → **Trust interception certificate** re-runs it.
 3. Menu bar → **Show match overlay**, then start a Marvel Snap match.
 
 > Experimental. The CA is generated per install and its private key is discarded immediately after signing the one leaf; only the leaf key persists, in the extension's private container. Nothing secret is bundled with the app. The cube value and snap count come from the same WebSocket, and the match result from the local `GameState.json`; the game's HTTP/2 API channel is certificate-pinned and left untouched.

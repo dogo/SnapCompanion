@@ -36,14 +36,21 @@ enum CertificateStore {
     /// Paths to the leaf chain + private key, generating them on first call.
     static func ensure() throws -> (chain: URL, key: URL) {
         let fm = FileManager.default
-        if fm.fileExists(atPath: leafChainURL.path), fm.fileExists(atPath: leafKeyURL.path) {
-            return (leafChainURL, leafKeyURL)
+        if !(fm.fileExists(atPath: leafChainURL.path) && fm.fileExists(atPath: leafKeyURL.path)) {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true,
+                                   attributes: [.posixPermissions: 0o700])
+            try generate(fm: fm)
+            log.info("generated per-install MITM CA + leaf")
         }
-        try fm.createDirectory(at: dir, withIntermediateDirectories: true,
-                               attributes: [.posixPermissions: 0o700])
-        try generate(fm: fm)
-        log.info("generated per-install MITM CA + leaf")
+        // Always (re)publish the public CA — /tmp is cleared on reboot but the app
+        // needs it there to trust the CA even when generation was skipped.
+        try? publishPublicCA()
         return (leafChainURL, leafKeyURL)
+    }
+
+    private static func publishPublicCA() throws {
+        guard let caPEM = try? String(contentsOf: caURL, encoding: .utf8) else { return }
+        try write(caPEM, to: URL(fileURLWithPath: publicCAPath), mode: 0o644)
     }
 
     private static func generate(fm: FileManager) throws {
@@ -92,8 +99,7 @@ enum CertificateStore {
         try write(chainPEM, to: leafChainURL, mode: 0o600)
         try write(leafKey.pemRepresentation, to: leafKeyURL, mode: 0o600)
         try write(caPEM, to: caURL, mode: 0o644)
-        // Public CA, world-readable, for the manual trust step.
-        try? write(caPEM, to: URL(fileURLWithPath: publicCAPath), mode: 0o644)
+        // The public CA is exposed at publicCAPath by ensure() → publishPublicCA().
     }
 
     private static func write(_ pem: String, to url: URL, mode: Int) throws {
