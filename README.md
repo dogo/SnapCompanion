@@ -4,6 +4,18 @@ A native macOS companion for Marvel Snap. It reads your local game data to brows
 
 > Unofficial community project. Not affiliated with or endorsed by Marvel, Second Dinner, Nuverse, or MarvelSnap.pro.
 
+## Screenshots
+
+![Overview with the live opponent overlay during a match](docs/screenshots/overlay.png)
+
+| Collection | Decks |
+|---|---|
+| ![Collection browser](docs/screenshots/collection.png) | ![Deck browser](docs/screenshots/decks.png) |
+
+| Settings | Menu bar |
+|---|---|
+| ![Settings](docs/screenshots/settings.png) | ![Menu bar controls](docs/screenshots/menubar.png) |
+
 ## Two things it does
 
 - **Collection, decks & sync** — reads `ProfileState.json` and `CollectionState.json` locally (never modifying them) and keeps your account, collection, and decks in sync with MarvelSnap.pro.
