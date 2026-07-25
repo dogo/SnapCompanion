@@ -37,7 +37,7 @@ A native macOS companion for Marvel Snap. It reads your local game data to brows
 
 ## Install
 
-Download the latest `SnapCompanion.dmg` from [Releases](https://github.com/dogo/SnapSync/releases), drag the app to `/Applications`, and open it. The collection, deck, and sync features work right away; the live overlay needs the one-time setup below.
+Download the latest `SnapCompanion.dmg` from [Releases](https://github.com/dogo/SnapCompanion/releases), drag the app to `/Applications`, and open it. The collection, deck, and sync features work right away; the live overlay needs the one-time setup below.
 
 ## Live opponent tracking
 
