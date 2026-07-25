@@ -1,16 +1,17 @@
-# Live opponent tracking (native)
+# Live opponent tracking (architecture)
 
-A working, fully native live Marvel Snap opponent overlay.
+How the native live Marvel Snap opponent overlay works, end to end.
 
 ## Pipeline
 
 1. **`NETransparentProxyProvider` system extension** (`Sources/SnapCompanionProxy`)
    intercepts only the SNAP process (Developer ID + `app-proxy-provider-systemextension`
-   entitlement + provisioning profiles, notarized; the app installs a bundled dev CA).
+   entitlement + provisioning profiles, notarized).
 2. **Per-flow TLS MITM**: it peeks the ClientHello SNI, and for the realtime
-   `*-ws-cf.nvprod.snapgametech.com` WebSocket terminates TLS with a bundled leaf
-   (NIOSSL over an EmbeddedChannel) and relays to the real server (NWConnection);
-   every other flow passes through untouched so the game keeps working.
+   `*-ws-cf.nvprod.snapgametech.com` WebSocket terminates TLS with a per-install
+   leaf (NIOSSL over an EmbeddedChannel) and relays to the real server
+   (NWConnection); every other flow passes through untouched so the game keeps
+   working. See [Certificates](#certificates) for how the leaf/CA are generated.
 3. **`WebSocketFrameParser` + `MatchTracker`** read `GetChangesResponse` changes into
    a match snapshot (opponent name, revealed cards, locations, turn) written to
    `/tmp/snapcompanion-live-match.json`.

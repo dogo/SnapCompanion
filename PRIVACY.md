@@ -1,6 +1,6 @@
 # SnapSync Privacy Policy
 
-Last updated: July 23, 2026.
+Last updated: July 25, 2026.
 
 SnapSync does not use analytics, telemetry, advertising, or collect data of its own.
 
@@ -29,6 +29,16 @@ Outside the account-linking flow described above, no synchronization data is sen
 The collection browser requests card artwork from `static.marvelsnap.pro` using the public card definition ID in the image URL. These requests do not include the Snap account ID or MarvelSnap.pro token. As with any web request, the CDN receives standard network metadata such as the IP address and user agent.
 
 The collection browser also requests the public Marvel Snap card catalog from the read-only DotGG API. This request does not include account, collection, deck, path, or authentication data. The result is reduced to card IDs and names and cached locally for 24 hours.
+
+## Live opponent overlay
+
+The optional live overlay uses a bundled system extension that intercepts only the Marvel Snap process's network traffic, on your Mac. For the game's realtime WebSocket it terminates and re-originates TLS locally to read the current match, and forwards the traffic to the game's servers unchanged — nothing about the match leaves your machine.
+
+From that connection it reads the opponent's name, revealed cards, the locations, the turn, the cube value, and snaps. The end-of-match result (win or loss and the cubes) is read from the local `GameState.json`. These values are shown in the overlay and, grouped by deck, aggregated into session statistics kept only in memory for the current app session.
+
+To intercept the game's TLS, the extension generates a unique certificate authority and leaf for this install on first use. The private keys stay on your Mac — the CA key is discarded right after signing the leaf — and nothing secret is bundled with the app. The app trusts the generated CA in your user trust domain; the rest of your system trust settings are untouched.
+
+The overlay loads opponent card and location artwork from `static.marvelsnap.pro` and requests MarvelSnap.pro's public known-AI list and archetype metadata to flag likely bots and predict the opponent's deck. These requests use public identifiers only and do not include your account, the opponent's identity, or match data.
 
 ## Data stored on your Mac
 
