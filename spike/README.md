@@ -38,7 +38,7 @@ early attempt to MITM it as HTTP/2 confirmed the storm and read nothing.
 `CertificateStore` generates a **unique CA + leaf per install** (swift-certificates)
 on the extension's first run; the CA private key is discarded right after signing
 the one leaf, and the leaf key + chain live 0600 in the extension's container. The
-CA cert is copied to `/tmp/snapcompanion-ca.pem` for the manual trust step.
+CA cert is copied to `/tmp/snapcompanion-ca.pem` for the app to trust (see below).
 
 ## Trusting the CA
 
