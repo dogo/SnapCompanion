@@ -180,16 +180,26 @@ Criteria:
 - usable diagnostics; ✅
 - signed and notarized distribution with documented privacy. ✅
 
+### 1.1 — Live opponent overlay ✅
+
+- Native `NETransparentProxyProvider` system extension intercepting only the Marvel Snap process. ✅
+- Per-flow TLS MITM of the realtime game WebSocket (NIOSSL), with passthrough for every other flow. ✅
+- Live match tracking: opponent name, revealed cards, locations, and turn. ✅
+- Bot detection via MarvelSnap.pro's known-AI lists. ✅
+- Opponent deck prediction from MarvelSnap.pro archetypes, with a confidence score and top candidates. ✅
+- Floating SwiftUI overlay, localized in English and Brazilian Portuguese. ✅
+- Bundle promoted to `1.1.0`.
+
 ## Next step
 
-Run the final signed and notarized DMG smoke test for `1.0.0`.
+Run the final signed and notarized DMG smoke test for `1.1.0`.
 
-## Post-1.0
+## Post-1.1
 
 Add only when supported by proven demand:
 
+- automate the live-overlay certificate trust and generate a unique CA per install;
+- match result and per-deck session stats (needs the game's HTTP/2 API channel);
 - complete SQLite history, only if lightweight history becomes insufficient;
-- match tracking;
-- overlay in a helper process;
 - multiple destinations;
 - deck recommendations.
