@@ -18,8 +18,24 @@ struct MenuBarContentView: View {
             Text(.automaticSync)
         }
 
+        Button {
+            model.toggleOverlay()
+        } label: {
+            Text(model.isOverlayVisible ? .overlayHide : .overlayShow)
+        }
+        .disabled(model.canConnect == false)
+
         Button(action: openDashboard) {
             Text(.openWindow)
+        }
+
+        Divider()
+
+        // Activates the transparent-proxy system extension for live tracking.
+        Button {
+            model.proxy.activate()
+        } label: {
+            Text(.liveTracking(model.proxy.status))
         }
 
         Divider()

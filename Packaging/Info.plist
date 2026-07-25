@@ -28,5 +28,7 @@
     <string>13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSSystemExtensionUsageDescription</key>
+    <string>SnapCompanion uses a network extension to read live Marvel Snap match data locally.</string>
 </dict>
 </plist>

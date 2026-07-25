@@ -1,60 +1,88 @@
-# SnapSync
+# SnapCompanion
 
-SnapSync is a native macOS app and command-line tool that reads local Marvel Snap state files and synchronizes your account, collection, and decks with MarvelSnap.pro.
+A native macOS companion for Marvel Snap. It reads your local game data to browse your collection and decks and sync them with MarvelSnap.pro — and it can show a **live overlay of your opponent's cards and likely deck** during a match.
 
-It reads game files without modifying them. No overlay, OCR, memory inspection, traffic interception, analytics, or telemetry is included.
+> Unofficial community project. Not affiliated with or endorsed by Marvel, Second Dinner, Nuverse, or MarvelSnap.pro.
 
-> SnapSync is an unofficial community project. It is not affiliated with or endorsed by Marvel, Second Dinner, Nuverse, or MarvelSnap.pro.
+## Two things it does
+
+- **Collection, decks & sync** — reads `ProfileState.json` and `CollectionState.json` locally (never modifying them) and keeps your account, collection, and decks in sync with MarvelSnap.pro.
+- **Live opponent overlay** (opt-in, experimental) — during a match, a floating overlay shows the opponent's revealed cards, a predicted archetype with a confidence score, a bot flag, the turn, and the locations. See [Live opponent tracking](#live-opponent-tracking).
 
 ## Features
 
-- Automatic discovery of the Marvel Snap `States/nvprod` directory on macOS.
-- Manual folder selection with a persistent read-only security-scoped bookmark.
+**Collection & decks**
+- Automatic discovery of the `States/nvprod` directory; manual folder selection with a read-only security-scoped bookmark.
 - Versioned parsing of account, collection, variants, and decks.
-- Local inventory summary with collection level, currencies, and card boosters.
-- Searchable collection browser with owned/missing filters, grayscale missing cards, sorting, and cached artwork.
-- Searchable deck browser with artwork previews and full card contents.
-- Private lightweight history of the latest collection and deck changes.
-- Manual and automatic synchronization with debounce, retry, idempotency, and an offline outbox.
+- Searchable collection browser: owned/missing filters, grayscale for missing cards, sorting, per-card details, cached artwork.
+- Deck browser with artwork and full card contents.
+- Local inventory: collection level, currencies, and boosters.
+- Private lightweight history of the latest collection/deck change.
+
+**Sync**
+- Manual and automatic sync with debounce, retry, idempotency, and an offline outbox.
+- Keychain-stored MarvelSnap.pro token; in-app disconnect and local data cleanup.
+- Sanitized diagnostics via `snapsync doctor`.
+
+**Live opponent overlay**
+- Opponent name and bot detection (MarvelSnap.pro's known-AI lists).
+- Revealed cards, updated live as they're played.
+- Deck prediction from MarvelSnap.pro archetypes, with a confidence score and top candidates.
+- Current turn and the three locations, with real art.
+
+**Platform**
 - Native SwiftUI dashboard and menu bar controls.
-- English and Brazilian Portuguese localization through a String Catalog.
-- Keychain storage for the MarvelSnap.pro token.
-- In-app account disconnection and local data cleanup.
-- Sanitized diagnostics through `snapsync doctor`.
-- Developer ID signing and Apple notarization through Fastlane and Match.
+- English and Brazilian Portuguese (String Catalog).
+- Developer ID signing and Apple notarization (Fastlane + Match).
 
-## Requirements
+## Install
 
-- macOS 13 or later.
-- Swift 6.2 or later for development.
-- Tuist 4.202.6, installed through Mise.
-- A local Marvel Snap installation for discovery and synchronization.
-- A MarvelSnap.pro account for uploads.
+Download the latest `SnapCompanion.dmg` from [Releases](https://github.com/dogo/SnapSync/releases), drag the app to `/Applications`, and open it. The collection, deck, and sync features work right away; the live overlay needs the one-time setup below.
 
-## Build and test Core and CLI
+## Live opponent tracking
+
+The overlay reads the current match from the game's realtime connection through a bundled **system extension** that intercepts only the Marvel Snap process's TLS, on your Mac. It terminates and re-originates that TLS locally to read the match state and forwards the traffic unchanged — nothing leaves your machine.
+
+One-time setup:
+
+1. Open SnapCompanion → menu bar → **Live opponent tracking**. Approve the system extension when macOS prompts (System Settings → General → Login Items & Extensions → Network Extensions).
+2. Trust the interception certificate. This step is currently manual:
+
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \
+     "/Applications/SnapCompanion.app/Contents/Library/SystemExtensions/br.com.anykey.SnapSync.proxy.systemextension/Contents/Resources/dev-ca.pem"
+   ```
+
+3. Menu bar → **Show match overlay**, then start a Marvel Snap match.
+
+> Experimental. The bundled certificate is a shared development CA — a production build should generate a unique certificate per install so the private key can't be extracted. Cube value, snaps, and the final result live on the game's HTTP/2 API channel and are not read.
+
+## Build (development)
+
+Requirements: macOS 13+, Swift 6.2+, Tuist 4.202.6 (via Mise), a local Marvel Snap install, and a MarvelSnap.pro account for uploads.
+
+Core and CLI:
 
 ```bash
 swift build
 swift test
 ```
 
-Run the development app:
+App:
 
 ```bash
 mise install
 mise exec -- tuist generate
 ```
 
-Then run the `SnapCompanionApp` scheme in Xcode. String Catalog symbols and localized resources are generated by the Xcode build.
+Then run the `SnapCompanionApp` scheme in Xcode. String Catalog symbols and localized resources are generated by the build.
 
-Create a macOS application bundle or DMG:
+Bundle or DMG (written to the ignored `dist/`):
 
 ```bash
 ./scripts/build_app.sh
 ./scripts/build_dmg.sh
 ```
-
-Artifacts are written to the ignored `dist/` directory.
 
 ## CLI
 
@@ -69,13 +97,19 @@ swift run snapsync watch --confirm
 swift run snapsync doctor
 ```
 
-Use `--path <nvprod>` with commands that accept a manually selected source directory.
+Add `--path <nvprod>` to point at a manually selected source directory.
+
+## Privacy
+
+Collection and sync read `ProfileState.json` and `CollectionState.json` locally; inventory and history stay on the Mac. Sync sends only the account, collection, deck, and authentication data MarvelSnap.pro needs. The token stays in the macOS Keychain and private values are excluded from logs and diagnostics.
+
+The live overlay intercepts and re-originates only the Marvel Snap process's TLS, locally, to read match state — the traffic is forwarded unchanged and nothing is sent anywhere.
+
+See [PRIVACY.md](PRIVACY.md) for the full data-handling policy.
 
 ## Release
 
-Release credentials are never committed. `fastlane/Matchfile`, `.env` files, certificates, private keys, provisioning profiles, and build artifacts are ignored.
-
-After configuring the local Matchfile and the `SnapSync-notary` Keychain profile:
+Credentials are never committed. After configuring the local Matchfile and the `SnapSync-notary` Keychain profile:
 
 ```bash
 mise install
@@ -83,18 +117,8 @@ mise exec -- bundle install
 mise exec -- bundle exec fastlane mac release
 ```
 
-See [DISTRIBUTION.md](DISTRIBUTION.md) for the complete release flow.
+See [DISTRIBUTION.md](DISTRIBUTION.md) for the complete flow.
 
-## Privacy
+## Project
 
-SnapSync reads `ProfileState.json` and `CollectionState.json` locally. Inventory and history remain on the Mac. Linking and synchronization send only the account, collection, deck, and authentication data required by MarvelSnap.pro. Tokens remain in the macOS Keychain, and private values are excluded from logs and diagnostics.
-
-See [PRIVACY.md](PRIVACY.md) for the complete data-handling policy.
-
-## Project status
-
-The current milestone and remaining work are tracked in [ROADMAP.md](ROADMAP.md).
-
-## License
-
-SnapSync is available under the [MIT License](LICENSE).
+Milestone and remaining work: [ROADMAP.md](ROADMAP.md). Available under the [MIT License](LICENSE).

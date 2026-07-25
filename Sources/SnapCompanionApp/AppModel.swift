@@ -25,6 +25,17 @@ final class AppModel: ObservableObject {
     @Published private(set) var isLinked = false
     @Published private(set) var isSyncing = false
     @Published private(set) var hasError = false
+    @Published private(set) var match: MatchState?
+    @Published private(set) var opponentCards: [String] = []
+    @Published private(set) var opponentName = ""
+    @Published private(set) var botStatus: BotStatus = .human
+    @Published private(set) var matchTurn = 0
+    @Published private(set) var matchTotalTurns = 0
+    @Published private(set) var locations: [String] = []
+    @Published private(set) var deckPredictions: [DeckPrediction] = []
+    @Published private(set) var isOverlayVisible = false
+    private var archetypes: [MetaArchetype] = []
+    private var botIndex: BotIndex?
     @Published var automaticSyncEnabled: Bool {
         didSet {
             UserDefaults.standard.set(automaticSyncEnabled, forKey: Self.automaticSyncKey)
@@ -38,12 +49,21 @@ final class AppModel: ObservableObject {
     private var source: SnapSource?
     private var scopedURL: URL?
     private var monitorTask: Task<Void, Never>?
+    private var overlay: MatchOverlayController?
+    private var matchTimer: Timer?
+    let proxy = ProxyController()
+    private var proxyObservation: AnyCancellable?
     private let synchronizer: SnapSynchronizer
     private static let automaticSyncKey = "automaticSyncEnabled"
 
     init(synchronizer: SnapSynchronizer = SnapSynchronizer()) {
         self.synchronizer = synchronizer
         automaticSyncEnabled = UserDefaults.standard.object(forKey: Self.automaticSyncKey) as? Bool ?? true
+        // The menu observes AppModel; forward the nested proxy's changes so its
+        // status label refreshes.
+        proxyObservation = proxy.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
     func load() {
@@ -250,6 +270,68 @@ final class AppModel: ObservableObject {
                 return
             } catch {
                 self?.show(error)
+            }
+        }
+    }
+
+    func toggleOverlay() {
+        isOverlayVisible ? hideOverlay() : showOverlay()
+    }
+
+    private func showOverlay() {
+        guard source != nil else { return }
+        loadArchetypes()
+        refreshMatch()
+        let controller = MatchOverlayController(model: self)
+        controller.show()
+        overlay = controller
+        isOverlayVisible = true
+        matchTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshMatch() }
+        }
+    }
+
+    private func hideOverlay() {
+        matchTimer?.invalidate()
+        matchTimer = nil
+        overlay?.close()
+        overlay = nil
+        isOverlayVisible = false
+    }
+
+    private func refreshMatch() {
+        if let source {
+            let latest = MatchState.read(from: source)
+            if latest != match { match = latest }
+        }
+        // Live match snapshot written by the proxy system extension.
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: "/tmp/snapcompanion-live-match.json")),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        matchTurn = obj["turn"] as? Int ?? 0
+        matchTotalTurns = obj["totalTurns"] as? Int ?? 0
+        locations = obj["locations"] as? [String] ?? []
+        let name = obj["opponentName"] as? String ?? ""
+        if name != opponentName {
+            opponentName = name
+            botStatus = botIndex?.status(for: name) ?? .human
+        }
+        let cards = obj["opponentCards"] as? [String] ?? []
+        guard cards != opponentCards else { return }
+        opponentCards = cards
+        deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: cards, archetypes: archetypes)
+    }
+
+    private func loadArchetypes() {
+        if archetypes.isEmpty {
+            Task { [weak self] in
+                let loaded = (try? await MetaArchetypes.shared.archetypes()) ?? []
+                await MainActor.run { self?.archetypes = loaded }
+            }
+        }
+        if botIndex == nil {
+            Task { [weak self] in
+                let index = try? await SnapBots.shared.index()
+                await MainActor.run { self?.botIndex = index }
             }
         }
     }

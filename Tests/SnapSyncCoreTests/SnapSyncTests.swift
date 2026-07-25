@@ -567,6 +567,59 @@ struct SnapSyncTests {
         #expect(missing.map(\.id) == ["Galactus"])
     }
 
+    @Test func matchStateParsesTurnCubesAndCardsIgnoringBOMAndNone() {
+        let json = """
+        {"RemoteGame":{"GameState":{"Turn":3,"TotalTurns":6,"CubeValue":2},\
+        "ClientPlayerInfo":{"CardsPlayed":["Wong","Agony"],\
+        "CardsDrawn":["Wong","None","Agony","None","BlackPanther"]}}}
+        """
+        var data = Data([0xEF, 0xBB, 0xBF]) // UTF-8 BOM prefix
+        data.append(Data(json.utf8))
+
+        let match = MatchState.parse(data)
+
+        #expect(match?.turn == 3)
+        #expect(match?.totalTurns == 6)
+        #expect(match?.cubeValue == 2)
+        #expect(match?.cardsPlayed == ["Wong", "Agony"])
+        #expect(match?.cardsDrawn == ["Wong", "Agony", "BlackPanther"])
+        #expect(MatchState.parse(Data("not json".utf8)) == nil)
+    }
+
+    @Test func deckPredictorRanksByCoverageAndListsRemaining() {
+        let wongSurfer = MetaArchetype(name: "Wong Surfer", supertype: "Ongoing", decksCount: 40, cards: [
+            .init(id: "Wong", weight: 1), .init(id: "Odin", weight: 1), .init(id: "SilverSurfer", weight: 0.9),
+            .init(id: "Sera", weight: 0.8), .init(id: "Ironheart", weight: 0.5),
+        ])
+        let destroy = MetaArchetype(name: "Arnim Knull", supertype: "Destroy", decksCount: 300, cards: [
+            .init(id: "ArnimZola", weight: 1), .init(id: "Knull", weight: 1), .init(id: "Wong", weight: 0.3),
+        ])
+
+        // "Token" isn't in any archetype and must be dropped from matching.
+        let result = DeckPredictor.predict(
+            revealed: ["Wong", "Odin", "Ironheart", "Token"],
+            archetypes: [destroy, wongSurfer]
+        )
+
+        #expect(result.first?.archetype.name == "Wong Surfer")     // covers 3 vs 1
+        #expect(result.first?.matched == ["Ironheart", "Odin", "Wong"])
+        #expect(result.first?.remaining == ["SilverSurfer", "Sera"]) // unrevealed, weight desc
+        #expect((result.first?.confidence ?? 0) > 0.8)              // dominates the evidence
+
+        // One common card (Wong is in both archetypes) is less certain than three.
+        let weak = DeckPredictor.predict(revealed: ["Wong"], archetypes: [destroy, wongSurfer])
+        #expect((weak.first?.confidence ?? 1) < (result.first?.confidence ?? 0))
+    }
+
+    @Test func botIndexFlagsKnownNamesByExactMatch() {
+        let index = BotIndex(lstm: ["RoboFoe"], human: ["FakeGuy"], marvel: ["IronDupe"], realPlayers: [])
+        #expect(index.status(for: "RoboFoe") == .lstmBot)
+        #expect(index.status(for: "FakeGuy") == .bot)
+        #expect(index.status(for: "IronDupe") == .bot)
+        #expect(index.status(for: "RealHuman") == .human)
+        #expect(index.status(for: "ab") == .human) // names of 2 or fewer chars are ignored
+    }
+
     @Test(.tags(.networking))
     func cardCatalogFiltersAndCachesThePublicCatalog() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
