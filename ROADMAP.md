@@ -186,20 +186,25 @@ Criteria:
 - Live match tracking: opponent name, revealed cards, locations, and turn. ✅
 - Bot detection via MarvelSnap.pro's known-AI lists. ✅
 - Opponent deck prediction from MarvelSnap.pro archetypes, with a confidence score and top candidates. ✅
-- Live cube value and snap count from the WebSocket, and win/loss result (cubes won/lost) from local `GameState.json`. ✅
-- Unique CA + leaf generated per install (no bundled key), trusted automatically in the user domain by the app. ✅
 - Floating SwiftUI overlay, localized in English and Brazilian Portuguese. ✅
 - Bundle promoted to `1.1.0`.
 
+### 1.2 — Match economy and session stats ✅
+
+- Live cube value and snap count from the WebSocket, and win/loss result (cubes won/lost) from local `GameState.json`, shown on the overlay. ✅
+- Unique CA + leaf generated per install (no bundled key); the app trusts it automatically in the user trust domain. ✅
+- Per-deck session statistics (games, win rate, net cubes) aggregated from `GameState.json`, on a dashboard Session page. ✅
+- New overlay and stats strings localized in English and Brazilian Portuguese. ✅
+- Bundle promoted to `1.2.0`.
+
 ## Next step
 
-Run the final signed and notarized DMG smoke test for `1.1.0`.
+Run the final signed and notarized DMG smoke test for `1.2.0`.
 
-## Post-1.1
+## Post-1.2
 
 Add only when supported by proven demand:
 
-- per-deck session stats aggregated from `GameState.json` match results;
 - complete SQLite history, only if lightweight history becomes insufficient;
 - multiple destinations;
 - deck recommendations.
