@@ -17,6 +17,14 @@ let project = Project(
             url: "https://github.com/apple/swift-nio-ssl.git",
             requirement: .upToNextMajor(from: "2.27.0")
         ),
+        .remote(
+            url: "https://github.com/apple/swift-certificates.git",
+            requirement: .upToNextMajor(from: "1.0.0")
+        ),
+        .remote(
+            url: "https://github.com/apple/swift-crypto.git",
+            requirement: .upToNextMajor(from: "3.0.0")
+        ),
     ],
     targets: [
         .target(
@@ -48,13 +56,14 @@ let project = Project(
             deploymentTargets: .macOS("15.0"),
             infoPlist: .file(path: "Packaging/SnapCompanionProxy-Info.plist"),
             sources: ["Sources/SnapCompanionProxy/*.swift"],
-            resources: ["Sources/SnapCompanionProxy/Resources/**"],
             entitlements: .file(path: "Packaging/SnapCompanionProxy.entitlements"),
             dependencies: [
                 .package(product: "NIOCore"),
                 .package(product: "NIOSSL"),
                 .package(product: "NIOHTTP1"),
                 .package(product: "NIOWebSocket"),
+                .package(product: "X509"),
+                .package(product: "Crypto"),
             ],
             settings: .settings(base: [
                 "PRODUCT_NAME": "br.com.anykey.SnapSync.proxy",

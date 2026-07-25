@@ -1,14 +1,12 @@
 import Foundation
 import NIOSSL
 
-/// Builds the NIOSSL server context used to terminate the game's TLS with our
-/// bundled leaf. ponytail: dev-only bundled key; a shipped build must generate
-/// a unique CA per install so the private key isn't extractable from the app.
+/// Builds the NIOSSL server context used to terminate the game's TLS. The leaf
+/// chain + key are generated per install by `CertificateStore` (never bundled).
 enum MITMContext {
     static func makeServerContext() -> NIOSSLContext? {
-        guard let chainURL = Bundle.main.url(forResource: "leaf-chain", withExtension: "pem"),
-              let keyURL = Bundle.main.url(forResource: "leaf", withExtension: "key") else { return nil }
         do {
+            let (chainURL, keyURL) = try CertificateStore.ensure()
             let chain = try NIOSSLCertificate.fromPEMFile(chainURL.path)
                 .map { NIOSSLCertificateSource.certificate($0) }
             let key = try NIOSSLPrivateKey(file: keyURL.path, format: .pem)

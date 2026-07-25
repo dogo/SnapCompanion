@@ -33,7 +33,14 @@ The HTTP/2 API host (`*-cf.nvprod.snapgametech.com`) is **certificate-pinned**:
 the game rejects our leaf and reconnect-storms, so it's left as passthrough. An
 early attempt to MITM it as HTTP/2 confirmed the storm and read nothing.
 
-## ponytail / TODO
+## Certificates
 
-Dev CA + leaf are bundled (a shipped build must generate a unique CA per install
-so the private key isn't extractable). Kept on a branch so main's 1.0 stays clean.
+`CertificateStore` generates a **unique CA + leaf per install** (swift-certificates)
+on the extension's first run; the CA private key is discarded right after signing
+the one leaf, and the leaf key + chain live 0600 in the extension's container. The
+CA cert is copied to `/tmp/snapcompanion-ca.pem` for the manual trust step.
+
+## TODO
+
+Automate the certificate trust so the manual `security add-trusted-cert` isn't
+needed (guarded by macOS — needs its own pass).
