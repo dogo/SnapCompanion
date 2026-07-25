@@ -54,7 +54,13 @@ public struct MatchState: Sendable, Equatable {
         let mine = items.first { ($0["AccountId"] as? String) == myAccount } ?? items.first
         guard let mine else { return nil }
         let cubes = message["FinalCubeValue"] as? Int ?? mine["FinalCubeValue"] as? Int ?? 0
-        return MatchResult(didWin: mine["IsWinner"] as? Bool ?? false, cubes: cubes)
+        let deck = (mine["Deck"] as? [String: Any])?["Name"] as? String ?? ""
+        return MatchResult(
+            didWin: mine["IsWinner"] as? Bool ?? false,
+            cubes: cubes,
+            deck: deck,
+            gameId: message["GameId"] as? String ?? ""
+        )
     }
 
     private static func cards(_ value: Any?) -> [String] {
@@ -63,13 +69,18 @@ public struct MatchState: Sendable, Equatable {
 }
 
 /// End-of-match outcome for the local player. `cubes` is the stake magnitude;
-/// the sign is implied by `didWin` (won +cubes / lost −cubes).
+/// the sign is implied by `didWin` (won +cubes / lost −cubes). `gameId` identifies
+/// the match (used to record each result once); `deck` is the deck the player used.
 public struct MatchResult: Sendable, Equatable {
     public let didWin: Bool
     public let cubes: Int
+    public let deck: String
+    public let gameId: String
 
-    public init(didWin: Bool, cubes: Int) {
+    public init(didWin: Bool, cubes: Int, deck: String = "", gameId: String = "") {
         self.didWin = didWin
         self.cubes = cubes
+        self.deck = deck
+        self.gameId = gameId
     }
 }

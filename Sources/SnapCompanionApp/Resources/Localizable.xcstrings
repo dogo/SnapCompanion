@@ -1,6 +1,15 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "sectionSession" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Session" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sessão" } } } },
+    "statsTitle" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This session" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nesta sessão" } } } },
+    "statsSubtitle" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Per-deck results since the app launched." } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Resultados por deck desde que o app abriu." } } } },
+    "statsEmpty" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No matches recorded this session yet." } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhuma partida registrada nesta sessão ainda." } } } },
+    "statsColDeck" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Deck" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Deck" } } } },
+    "statsColRecord" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "W–L" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "V–D" } } } },
+    "statsColWinRate" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Win %" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "% Vit." } } } },
+    "statsColCubes" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Cubes" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cubos" } } } },
+    "statsTotal" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Total" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Total" } } } },
     "overlayWon" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You won +%lld cubes" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Você ganhou +%lld cubos" } } } },
     "overlayLost" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You lost −%lld cubes" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Você perdeu −%lld cubos" } } } },
     "overlaySnaps" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Snap ×%lld" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Snap ×%lld" } } } },

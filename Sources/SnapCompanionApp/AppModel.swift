@@ -26,6 +26,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var isSyncing = false
     @Published private(set) var hasError = false
     @Published private(set) var match: MatchState?
+    @Published private(set) var sessionStats = SessionStats()
+    private var lastRecordedGameId = ""
     @Published private(set) var opponentCards: [String] = []
     @Published private(set) var opponentName = ""
     @Published private(set) var botStatus: BotStatus = .human
@@ -210,6 +212,7 @@ final class AppModel: ObservableObject {
 
     private func update(_ snapshot: SnapSnapshot, source: SnapSource) {
         self.source = source
+        startMatchPolling()   // read GameState.json for match state + session stats
         accountName = snapshot.account?.displayName ?? String(localized: .unknownAccount)
         collection = snapshot.collection
         decks = snapshot.decks.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
@@ -280,22 +283,28 @@ final class AppModel: ObservableObject {
         isOverlayVisible ? hideOverlay() : showOverlay()
     }
 
-    private func showOverlay() {
-        guard source != nil else { return }
-        loadArchetypes()
+    /// Polls the game's local `GameState.json` (+ the live-match file) every
+    /// second for match state and session stats. Runs whenever a source is set,
+    /// independent of the overlay — the game writes GameState.json on its own.
+    private func startMatchPolling() {
+        guard matchTimer == nil, source != nil else { return }
         refreshMatch()
-        let controller = MatchOverlayController(model: self)
-        controller.show()
-        overlay = controller
-        isOverlayVisible = true
         matchTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshMatch() }
         }
     }
 
+    private func showOverlay() {
+        guard source != nil else { return }
+        loadArchetypes()
+        startMatchPolling()
+        let controller = MatchOverlayController(model: self)
+        controller.show()
+        overlay = controller
+        isOverlayVisible = true
+    }
+
     private func hideOverlay() {
-        matchTimer?.invalidate()
-        matchTimer = nil
         overlay?.close()
         overlay = nil
         isOverlayVisible = false
@@ -305,6 +314,11 @@ final class AppModel: ObservableObject {
         if let source {
             let latest = MatchState.read(from: source)
             if latest != match { match = latest }
+            // Tally each finished match once into the per-deck session stats.
+            if let result = latest?.result, result.gameId != lastRecordedGameId {
+                lastRecordedGameId = result.gameId
+                sessionStats.record(result)
+            }
         }
         // Live match snapshot written by the proxy system extension.
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: "/tmp/snapcompanion-live-match.json")),
