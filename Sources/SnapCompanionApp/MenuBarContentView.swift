@@ -43,7 +43,7 @@ struct MenuBarContentView: View {
         Button {
             DispatchQueue.global(qos: .userInitiated).async { CATrust.ensureTrusted() }
         } label: {
-            Text("Trust interception certificate")
+            Text(.trustCertificate)
         }
 
         Divider()

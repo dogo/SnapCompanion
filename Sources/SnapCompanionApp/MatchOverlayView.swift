@@ -32,7 +32,7 @@ struct MatchOverlayView: View {
             if let result = model.match?.result {
                 HStack(spacing: 8) {
                     Image(systemName: result.didWin ? "trophy.fill" : "xmark.seal.fill")
-                    Text(result.didWin ? "You won +\(result.cubes) cubes" : "You lost −\(result.cubes) cubes")
+                    Text(result.didWin ? .overlayWon(result.cubes) : .overlayLost(result.cubes))
                         .font(.subheadline.bold())
                 }
                 .foregroundStyle(.white)
@@ -59,7 +59,7 @@ struct MatchOverlayView: View {
                 }
                 if model.matchSnaps > 0 {
                     Label {
-                        Text("Snap ×\(model.matchSnaps)")
+                        Text(.overlaySnaps(model.matchSnaps))
                     } icon: {
                         Image(systemName: "flame.fill")
                     }

@@ -1,6 +1,10 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "overlayWon" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You won +%lld cubes" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Você ganhou +%lld cubos" } } } },
+    "overlayLost" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You lost −%lld cubes" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Você perdeu −%lld cubos" } } } },
+    "overlaySnaps" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Snap ×%lld" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Snap ×%lld" } } } },
+    "trustCertificate" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Trust interception certificate" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Confiar no certificado de interceptação" } } } },
     "accountLinked" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Account linked" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conta vinculada" } } } },
     "accountLinkedDetail" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Your collection and decks can be synced securely." } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Coleção e decks podem ser sincronizados com segurança." } } } },
     "accountMissingReason" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "account name or ID is missing" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "o nome ou ID da conta está ausente" } } } },
