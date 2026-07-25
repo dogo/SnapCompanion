@@ -6,7 +6,11 @@ A native macOS companion for Marvel Snap. It reads your local game data to brows
 
 ## Screenshots
 
-![Overview with the live opponent overlay during a match](docs/screenshots/overlay.png)
+![Overview dashboard](docs/screenshots/overview.png)
+
+| Live opponent overlay | Session stats |
+|---|---|
+| ![Live opponent overlay during a match](docs/screenshots/overlay.png) | ![Per-deck session results](docs/screenshots/session.png) |
 
 | Collection | Decks |
 |---|---|
