@@ -1,0 +1,12 @@
+--min-version 0.62.1
+--swift-version 6.0
+--language-mode 6
+
+--disable all
+--enable blankLineAfterImports,blankLinesAroundMark,blankLinesAtEndOfScope,blankLinesAtStartOfScope,braces,consecutiveBlankLines,duplicateImports,emptyBraces,indent,linebreakAtEndOfFile,linebreaks,sortImports,spaceAroundBraces,spaceAroundBrackets,spaceAroundComments,spaceAroundGenerics,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideGenerics,spaceInsideParens,trailingSpace
+
+--indent 4
+--ifdef no-indent
+--import-grouping access-control,alpha,testable-last
+--linebreaks lf
+--no-space-operators ...,..<

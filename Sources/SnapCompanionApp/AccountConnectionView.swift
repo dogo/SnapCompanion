@@ -16,7 +16,7 @@ struct AccountConnectionView: View {
                     .font(.headline)
 
                     Text(model.isLinked ? .accountLinkedDetail : .accountNotLinkedDetail)
-                    .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -30,24 +30,24 @@ struct AccountConnectionView: View {
                     Button(role: .destructive, action: requestDisconnect) {
                         Text(.disconnect)
                     }
-                        .disabled(model.isConnecting || model.isSyncing)
-                        .confirmationDialog(
-                            String(localized: .disconnectTitle),
-                            isPresented: $confirmsDisconnect,
-                            titleVisibility: .visible
-                        ) {
-                            Button(role: .destructive, action: model.disconnect) { Text(.disconnect) }
-                            Button(role: .cancel, action: {}) { Text(.cancel) }
-                        } message: {
-                            Text(.disconnectMessage)
-                        }
+                    .disabled(model.isConnecting || model.isSyncing)
+                    .confirmationDialog(
+                        String(localized: .disconnectTitle),
+                        isPresented: $confirmsDisconnect,
+                        titleVisibility: .visible
+                    ) {
+                        Button(role: .destructive, action: model.disconnect) { Text(.disconnect) }
+                        Button(role: .cancel, action: {}) { Text(.cancel) }
+                    } message: {
+                        Text(.disconnectMessage)
+                    }
                 } else {
                     Button(action: connect) {
                         Label(.connectAccount, systemImage: "link")
                     }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.purple)
-                        .disabled(model.canConnect == false || model.isConnecting || model.isSyncing)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.purple)
+                    .disabled(model.canConnect == false || model.isConnecting || model.isSyncing)
                 }
             }
         }

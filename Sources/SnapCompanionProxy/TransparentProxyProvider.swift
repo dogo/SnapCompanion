@@ -1,5 +1,5 @@
-import NetworkExtension
 import Network
+import NetworkExtension
 import NIOSSL
 import os
 

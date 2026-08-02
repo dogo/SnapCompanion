@@ -20,7 +20,7 @@ struct CollectionControlsView: View {
                     } icon: {
                         Image(systemName: option.systemImage)
                     }
-                        .tag(option)
+                    .tag(option)
                 }
             } label: {
                 Text(.filter)
@@ -34,7 +34,7 @@ struct CollectionControlsView: View {
                     } icon: {
                         Image(systemName: option.systemImage)
                     }
-                        .tag(option)
+                    .tag(option)
                 }
             } label: {
                 Text(.sort)

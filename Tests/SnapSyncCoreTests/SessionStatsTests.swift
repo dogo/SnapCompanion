@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SnapSyncCore
 
 @Test func aggregatesWinsLossesAndNetCubesPerDeck() {

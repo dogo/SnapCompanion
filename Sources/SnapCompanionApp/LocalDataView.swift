@@ -19,17 +19,17 @@ struct LocalDataView: View {
                 Button(role: .destructive, action: requestClear) {
                     Text(.clearLocalData)
                 }
-                    .disabled(model.isConnecting || model.isSyncing)
-                    .confirmationDialog(
-                        String(localized: .clearLocalDataTitle),
-                        isPresented: $confirmsClear,
-                        titleVisibility: .visible
-                    ) {
-                        Button(role: .destructive, action: model.clearLocalData) { Text(.clearLocalData) }
-                        Button(role: .cancel, action: {}) { Text(.cancel) }
-                    } message: {
-                        Text(.clearLocalDataMessage)
-                    }
+                .disabled(model.isConnecting || model.isSyncing)
+                .confirmationDialog(
+                    String(localized: .clearLocalDataTitle),
+                    isPresented: $confirmsClear,
+                    titleVisibility: .visible
+                ) {
+                    Button(role: .destructive, action: model.clearLocalData) { Text(.clearLocalData) }
+                    Button(role: .cancel, action: {}) { Text(.cancel) }
+                } message: {
+                    Text(.clearLocalDataMessage)
+                }
             }
         }
     }

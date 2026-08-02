@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import SnapSyncCore
 
 // Minimal GameState.json shaped like the real file (RemoteGame.GameState +

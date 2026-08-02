@@ -33,7 +33,7 @@ struct DashboardView: View {
                     } icon: {
                         Image(systemName: section.systemImage)
                     }
-                        .tag(section)
+                    .tag(section)
                 }
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210)

@@ -30,7 +30,7 @@ struct CollectionView: View {
 
                 if catalogUnavailable {
                     Label(.collectionCatalogUnavailable, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 CollectionControlsView(filter: $filter, sort: $sort, resultCount: cards.count)

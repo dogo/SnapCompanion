@@ -25,9 +25,9 @@ struct SettingsCard<Content: View>: View {
             } icon: {
                 Image(systemName: systemImage)
             }
-                .font(.title2)
-                .bold()
-                .foregroundStyle(tint)
+            .font(.title2)
+            .bold()
+            .foregroundStyle(tint)
 
             content
         }

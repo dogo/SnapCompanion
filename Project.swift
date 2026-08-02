@@ -37,6 +37,28 @@ let project = Project(
             sources: ["Sources/SnapCompanionApp/**"],
             resources: ["Sources/SnapCompanionApp/Resources/**"],
             entitlements: .file(path: "Packaging/SnapCompanion.entitlements"),
+            scripts: [
+                .pre(
+                    script: """
+                    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+                    cd "$SRCROOT"
+                    mise exec -- swiftformat --lint --cache ignore Sources Tests Package.swift Project.swift Tuist.swift
+                    touch "$SCRIPT_OUTPUT_FILE_0"
+                    """,
+                    name: "SwiftFormat",
+                    inputPaths: [
+                        ".swiftformat",
+                        "mise.toml",
+                        "Package.swift",
+                        "Project.swift",
+                        "Tuist.swift",
+                        "Sources/**/*.swift",
+                        "Tests/**/*.swift",
+                    ],
+                    outputPaths: ["$(DERIVED_FILE_DIR)/swiftformat-lint"],
+                    basedOnDependencyAnalysis: true
+                ),
+            ],
             dependencies: [
                 .package(product: "SnapSyncCore"),
                 .package(product: "Kingfisher"),

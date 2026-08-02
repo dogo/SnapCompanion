@@ -13,7 +13,7 @@ struct MetricCard: View {
             } icon: {
                 Image(systemName: systemImage)
             }
-                .foregroundStyle(tint)
+            .foregroundStyle(tint)
 
             Text(value)
                 .font(.title)
