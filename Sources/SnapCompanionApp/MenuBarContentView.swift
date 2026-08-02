@@ -12,22 +12,26 @@ struct MenuBarContentView: View {
         Button(action: synchronize) {
             Text(.syncNow)
         }
+        .keyboardShortcut("r")
         .disabled(model.canSync == false || model.isSyncing || model.isConnecting)
 
         Toggle(isOn: $model.automaticSyncEnabled) {
             Text(.automaticSync)
         }
+        .keyboardShortcut("a", modifiers: [.command, .shift])
 
         Button {
             model.toggleOverlay()
         } label: {
             Text(model.isOverlayVisible ? .overlayHide : .overlayShow)
         }
+        .keyboardShortcut("o", modifiers: [.command, .shift])
         .disabled(model.canConnect == false)
 
         Button(action: openDashboard) {
             Text(.openWindow)
         }
+        .keyboardShortcut("o")
 
         Divider()
 
@@ -37,6 +41,7 @@ struct MenuBarContentView: View {
         } label: {
             Text(.liveTracking(model.proxy.status))
         }
+        .keyboardShortcut("l", modifiers: [.command, .shift])
 
         // Trusts the per-install MITM CA (one admin prompt). Auto-runs on enable
         // too; here as an explicit re-trigger.
@@ -51,6 +56,7 @@ struct MenuBarContentView: View {
         Button(action: quit) {
             Text(.quit)
         }
+        .keyboardShortcut("q")
     }
 
     private var statusImage: String {
