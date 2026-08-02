@@ -207,4 +207,4 @@ Add only when supported by proven demand:
 
 - complete SQLite history, only if lightweight history becomes insufficient;
 - multiple destinations;
-- deck recommendations.
+- deck recommendations. ✅

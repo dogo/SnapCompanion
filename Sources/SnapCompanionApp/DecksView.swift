@@ -4,19 +4,96 @@ import SwiftUI
 struct DecksView: View {
     @ObservedObject var model: AppModel
     @State private var searchText = ""
+    @State private var showsRecommendations = false
+    @State private var includesIncompleteDecks = true
+    @State private var recommendations: [DeckRecommendation] = []
+    @State private var isLoadingRecommendations = false
+    @State private var recommendationsUnavailable = false
     @State private var selectedDeck: SnapSnapshot.Deck?
+    @State private var selectedRecommendation: DeckRecommendation?
     private let columns = [GridItem(.adaptive(minimum: 270))]
 
     var body: some View {
         let decks = searchText.isEmpty
             ? model.decks
             : model.decks.filter { $0.name.localizedStandardContains(searchText) }
+        let recommendationResults = recommendations.filter { recommendation in
+            (includesIncompleteDecks || recommendation.isComplete)
+                && (searchText.isEmpty
+                    || recommendation.archetype.name.localizedStandardContains(searchText)
+                    || recommendation.archetype.supertype.localizedStandardContains(searchText))
+        }
 
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                DecksHeaderView(deckCount: model.deckCount)
+                DecksHeaderView(
+                    title: showsRecommendations ? .deckRecommendations : .decksHeaderTitle,
+                    subtitle: showsRecommendations ? .deckRecommendationsSubtitle : .decksHeaderSubtitle,
+                    deckCount: showsRecommendations ? recommendations.count : model.deckCount
+                )
 
-                if decks.isEmpty {
+                Picker(.sectionDecks, selection: $showsRecommendations) {
+                    Text(.decksHeaderTitle).tag(false)
+                    Text(.deckRecommendations).tag(true)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+
+                if showsRecommendations {
+                    Toggle(.includeIncompleteDecks, isOn: $includesIncompleteDecks)
+
+                    if isLoadingRecommendations {
+                        ProgressView(.loadingRecommendations)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    } else if recommendationsUnavailable {
+                        VStack {
+                            Image(systemName: "wifi.exclamationmark")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                            Text(.recommendationsUnavailable)
+                                .font(.title2)
+                                .bold()
+                            Button(action: retryRecommendations) {
+                                Label(.retry, systemImage: "arrow.clockwise")
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                    } else if recommendationResults.isEmpty {
+                        VStack {
+                            Image(systemName: searchText.isEmpty ? "rectangle.stack.badge.questionmark" : "magnifyingglass")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                            Text(searchText.isEmpty ? .emptyNoCompleteRecommendations : .emptyNoResults)
+                                .font(.title2)
+                                .bold()
+                            Text(searchText.isEmpty ? .emptyIncludeIncompleteDecks : .emptyTryAnotherDeckName)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                    } else {
+                        LazyVGrid(columns: columns) {
+                            ForEach(recommendationResults) { recommendation in
+                                Button {
+                                    selectedRecommendation = recommendation
+                                } label: {
+                                    DeckPreviewCard(recommendation: recommendation)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(Text(.recommendationAccessibility(
+                                    recommendation.archetype.name,
+                                    recommendation.ownedCardCount,
+                                    recommendation.cardDefinitionIDs.count
+                                )))
+                                .accessibilityHint(Text(.openDeckAccessibilityHint))
+                            }
+                        }
+                    }
+                } else if decks.isEmpty {
                     VStack {
                         Image(systemName: searchText.isEmpty ? "rectangle.stack.badge.questionmark" : "magnifyingglass")
                             .font(.largeTitle)
@@ -60,10 +137,38 @@ struct DecksView: View {
         .sheet(item: $selectedDeck) { deck in
             DeckDetailView(deck: deck)
         }
+        .sheet(item: $selectedRecommendation) { recommendation in
+            DeckDetailView(recommendation: recommendation)
+        }
+        .task(id: model.collection.map(\.id)) {
+            await loadRecommendations()
+        }
+    }
+
+    private func loadRecommendations() async {
+        isLoadingRecommendations = true
+        recommendationsUnavailable = false
+        defer { isLoadingRecommendations = false }
+        do {
+            recommendations = DeckRecommendation.ranked(
+                ownedCardDefinitionIDs: model.collection.map(\.id),
+                archetypes: try await MetaArchetypes.shared.archetypes()
+            )
+        } catch is CancellationError {
+            return
+        } catch {
+            recommendationsUnavailable = recommendations.isEmpty
+        }
+    }
+
+    private func retryRecommendations() {
+        Task { await loadRecommendations() }
     }
 }
 
 private struct DecksHeaderView: View {
+    let title: LocalizedStringResource
+    let subtitle: LocalizedStringResource
     let deckCount: Int
 
     var body: some View {
@@ -80,10 +185,10 @@ private struct DecksHeaderView: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading) {
-                    Text(.decksHeaderTitle)
+                    Text(title)
                         .font(.title)
                         .bold()
-                    Text(.decksHeaderSubtitle)
+                    Text(subtitle)
                         .foregroundStyle(.white.opacity(0.85))
                     Text(.deckCount(deckCount))
                         .font(.subheadline)
@@ -105,11 +210,34 @@ private struct DecksHeaderView: View {
 }
 
 private struct DeckPreviewCard: View {
-    let deck: SnapSnapshot.Deck
+    let name: String
+    let cardDefinitionIDs: [String]
+    let status: String
+    let statusSystemImage: String
+    let statusColor: Color
+
+    init(deck: SnapSnapshot.Deck) {
+        name = deck.name
+        cardDefinitionIDs = deck.cardDefinitionIDs
+        status = String(localized: .cardCount(deck.cardDefinitionIDs.count))
+        statusSystemImage = "rectangle.stack.fill"
+        statusColor = .secondary
+    }
+
+    init(recommendation: DeckRecommendation) {
+        name = recommendation.archetype.name
+        cardDefinitionIDs = recommendation.cardDefinitionIDs
+        status = String(localized: .recommendationProgress(
+            recommendation.ownedCardCount,
+            recommendation.cardDefinitionIDs.count
+        ))
+        statusSystemImage = recommendation.isComplete ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+        statusColor = recommendation.isComplete ? .green : .orange
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if deck.cardDefinitionIDs.isEmpty {
+            if cardDefinitionIDs.isEmpty {
                 Image(systemName: "rectangle.stack.badge.questionmark")
                     .font(.system(size: 48))
                     .foregroundStyle(.secondary)
@@ -117,7 +245,7 @@ private struct DeckPreviewCard: View {
                     .accessibilityHidden(true)
             } else {
                 HStack(spacing: -18) {
-                    ForEach(Array(deck.cardDefinitionIDs.prefix(4).enumerated()), id: \.offset) { index, definitionID in
+                    ForEach(Array(cardDefinitionIDs.prefix(4).enumerated()), id: \.offset) { index, definitionID in
                         CollectionCardImageView(definitionID: definitionID)
                             .frame(width: 78, height: 78)
                             .shadow(color: .black.opacity(0.25), radius: 5, y: 3)
@@ -127,13 +255,13 @@ private struct DeckPreviewCard: View {
                 .frame(maxWidth: .infinity, minHeight: 92)
             }
 
-            Text(deck.name)
+            Text(name)
                 .font(.headline)
                 .lineLimit(2)
 
-            Label(.cardCount(deck.cardDefinitionIDs.count), systemImage: "rectangle.stack.fill")
+            Label(status, systemImage: statusSystemImage)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(statusColor)
         }
         .padding()
         .background(.regularMaterial, in: .rect(cornerRadius: 16))
@@ -144,22 +272,47 @@ private struct DeckPreviewCard: View {
 
 private struct DeckDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    let deck: SnapSnapshot.Deck
+    let name: String
+    let cardDefinitionIDs: [String]
+    let missingCardDefinitionIDs: Set<String>
     private let columns = [GridItem(.adaptive(minimum: 150))]
+
+    init(deck: SnapSnapshot.Deck) {
+        name = deck.name
+        cardDefinitionIDs = deck.cardDefinitionIDs
+        missingCardDefinitionIDs = []
+    }
+
+    init(recommendation: DeckRecommendation) {
+        name = recommendation.archetype.name
+        cardDefinitionIDs = recommendation.cardDefinitionIDs
+        missingCardDefinitionIDs = Set(recommendation.missingCardDefinitionIDs)
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: columns) {
-                    ForEach(deck.cardDefinitionIDs, id: \.self) { definitionID in
+                    ForEach(cardDefinitionIDs, id: \.self) { definitionID in
                         VStack(alignment: .leading) {
                             CollectionCardImageView(definitionID: definitionID)
                             Text(displayName(for: definitionID))
                                 .font(.headline)
                                 .lineLimit(2)
+                            if missingCardDefinitionIDs.contains(definitionID) {
+                                Label(.missing, systemImage: "exclamationmark.circle.fill")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.orange)
+                            }
                         }
                         .padding()
                         .background(.regularMaterial, in: .rect(cornerRadius: 16))
+                        .overlay {
+                            if missingCardDefinitionIDs.contains(definitionID) {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(.orange, lineWidth: 2)
+                            }
+                        }
                         .accessibilityElement(children: .combine)
                     }
                 }
@@ -173,7 +326,7 @@ private struct DeckDetailView: View {
                 )
                 .ignoresSafeArea()
             }
-            .navigationTitle(deck.name)
+            .navigationTitle(name)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: dismiss.callAsFunction) {

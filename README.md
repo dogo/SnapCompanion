@@ -32,6 +32,7 @@ A native macOS companion for Marvel Snap. It reads your local game data to brows
 - Versioned parsing of account, collection, variants, and decks.
 - Searchable collection browser: owned/missing filters, grayscale for missing cards, sorting, per-card details, cached artwork.
 - Deck browser with artwork and full card contents.
+- Meta deck recommendations ranked by owned cards, including incomplete decks with missing cards highlighted.
 - Local inventory: collection level, currencies, and boosters.
 - Private lightweight history of the latest collection/deck change.
 

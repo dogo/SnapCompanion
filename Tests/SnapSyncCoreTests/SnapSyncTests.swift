@@ -612,6 +612,32 @@ struct SnapSyncTests {
         #expect((weak.first?.confidence ?? 1) < (result.first?.confidence ?? 0))
     }
 
+    @Test func deckRecommendationsRankOwnedCardsAndKeepMissingCards() throws {
+        let complete = MetaArchetype(
+            name: "Complete",
+            supertype: "Test",
+            decksCount: 1,
+            cards: (1...12).map { .init(id: "A\($0)", weight: Double(13 - $0)) }
+        )
+        let partial = MetaArchetype(
+            name: "Partial",
+            supertype: "Test",
+            decksCount: 100,
+            cards: (1...13).map { .init(id: "B\($0)", weight: Double(14 - $0)) }
+        )
+        let recommendations = DeckRecommendation.ranked(
+            ownedCardDefinitionIDs: (1...12).map { "A\($0)" } + (1...10).map { "B\($0)" } + ["B13"],
+            archetypes: [partial, complete]
+        )
+        let incomplete = try #require(recommendations.last)
+
+        #expect(recommendations.first?.archetype.name == "Complete")
+        #expect(recommendations.first?.isComplete == true)
+        #expect(incomplete.cardDefinitionIDs.count == 12)
+        #expect(incomplete.cardDefinitionIDs.contains("B13") == false)
+        #expect(incomplete.missingCardDefinitionIDs == ["B11", "B12"])
+    }
+
     @Test func botIndexFlagsKnownNamesByExactMatch() {
         let index = BotIndex(lstm: ["RoboFoe"], human: ["FakeGuy"], marvel: ["IronDupe"], realPlayers: [])
         #expect(index.status(for: "RoboFoe") == .lstmBot)
