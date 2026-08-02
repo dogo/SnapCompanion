@@ -197,14 +197,21 @@ Criteria:
 - New overlay and stats strings localized in English and Brazilian Portuguese. ✅
 - Bundle promoted to `1.2.0`.
 
+### 1.3 — Deck recommendations and usability ✅
+
+- Meta deck recommendations ranked by the cards in the user's collection, with optional incomplete decks and missing cards highlighted. ✅
+- Menu bar keyboard shortcuts for sync, automatic sync, overlay, window, and quit. ✅
+- Visible progress and completion feedback for manual synchronization. ✅
+- SwiftFormat lint integrated into the Xcode build. ✅
+- Bundle promoted to `1.3.0`.
+
 ## Next step
 
-Run the final signed and notarized DMG smoke test for `1.2.0`.
+Run the final signed and notarized DMG smoke test for `1.3.0`.
 
-## Post-1.2
+## Post-1.3
 
 Add only when supported by proven demand:
 
 - complete SQLite history, only if lightweight history becomes insufficient;
-- multiple destinations;
-- deck recommendations. ✅
+- multiple destinations.
