@@ -10,7 +10,16 @@ struct MenuBarContentView: View {
         Divider()
 
         Button(action: synchronize) {
-            Text(.syncNow)
+            Label {
+                Text(model.isSyncing ? .statusSyncing : .syncNow)
+            } icon: {
+                if model.isSyncing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                }
+            }
         }
         .keyboardShortcut("r")
         .disabled(model.canSync == false || model.isSyncing || model.isConnecting)

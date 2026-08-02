@@ -55,9 +55,21 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: synchronize) {
-                        Label(.syncNow, systemImage: "arrow.triangle.2.circlepath")
+                        Label {
+                            Text(model.statusText)
+                        } icon: {
+                            if model.isSyncing {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                            }
+                        }
                     }
-                        .disabled(model.canSync == false || model.isSyncing || model.isConnecting)
+                    .labelStyle(.titleAndIcon)
+                    .accessibilityLabel(Text(.syncNow))
+                    .accessibilityValue(Text(model.statusText))
+                    .disabled(model.canSync == false || model.isSyncing || model.isConnecting)
                 }
             }
         }
