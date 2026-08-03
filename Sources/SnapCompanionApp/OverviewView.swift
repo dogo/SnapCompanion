@@ -1,3 +1,4 @@
+import SnapSyncCore
 import SwiftUI
 
 struct OverviewView: View {
@@ -36,6 +37,9 @@ struct OverviewView: View {
                     )
                 }
 
+                if let best = model.sessionStats.decks(by: .cubes).first {
+                    bestDeckCard(best)
+                }
                 InventorySummaryView(model: model)
                 SnapshotChangesView(change: model.lastChange)
             }
@@ -50,5 +54,20 @@ struct OverviewView: View {
             .ignoresSafeArea()
         }
         .navigationTitle(Text(.sectionOverview))
+    }
+
+    private func bestDeckCard(_ stat: DeckStat) -> some View {
+        HStack {
+            Label { Text(.overviewBestDeck) } icon: { Image(systemName: "trophy.fill") }
+                .foregroundStyle(.yellow)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(stat.deck).font(.headline).lineLimit(1)
+                Text(verbatim: "\(stat.cubes >= 0 ? "+" : "−")\(abs(stat.cubes)) · \(stat.wins)–\(stat.losses)")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+        .padding()
+        .background(.regularMaterial, in: .rect(cornerRadius: 16))
     }
 }
