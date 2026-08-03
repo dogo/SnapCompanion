@@ -78,9 +78,24 @@ struct SessionStatsView: View {
         GridRow {
             Text(stat.deck).lineLimit(1)
             Text(verbatim: "\(stat.wins)–\(stat.losses)")
-            Text(verbatim: "\(Int((stat.winRate * 100).rounded()))%")
+            winRateBar(stat.winRate)
             cubes(stat.cubes)
         }
+    }
+
+    private func winRateBar(_ rate: Double) -> some View {
+        HStack(spacing: 6) {
+            Capsule().fill(.quaternary)
+                .frame(width: 40, height: 5)
+                .overlay(alignment: .leading) {
+                    Capsule().fill(.green).frame(width: 40 * rate, height: 5)
+                }
+            Text(verbatim: "\(Int((rate * 100).rounded()))%")
+                .monospacedDigit()
+        }
+        .accessibilityElement()
+        .accessibilityLabel(Text(.statsColWinRate))
+        .accessibilityValue(Text(verbatim: "\(Int((rate * 100).rounded()))%"))
     }
 
     private func cubes(_ n: Int) -> Text {
