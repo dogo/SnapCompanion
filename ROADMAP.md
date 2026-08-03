@@ -206,13 +206,22 @@ Criteria:
 - SwiftFormat lint integrated into the Xcode build. ✅
 - Bundle promoted to `1.3.0`.
 
+### 1.4 — Persistent deck performance ✅
+
+- Per-deck stats (wins, losses, net cubes) persist across relaunches in private JSON, deduped by `gameId`. ✅
+- Reset button clears deck stats without wiping all local data. ✅
+- Sortable stats table (games, win rate, net cubes) and per-deck win-rate bar. ✅
+- Best deck by net cubes highlighted on the Overview. ✅
+- Session page renamed to Stats; new strings localized in English and Brazilian Portuguese. ✅
+- Bundle promoted to `1.4.0`, signed and notarized.
+
 ## Next step
 
-Run the final signed and notarized DMG smoke test for `1.3.0`.
+Gather usage before deciding on time-series history or multiple destinations.
 
-## Post-1.3
+## Post-1.4
 
 Add only when supported by proven demand:
 
-- complete SQLite history, only if lightweight history becomes insufficient (per-deck stats now persist in JSON — a database is unwarranted until per-period/time-series queries are needed);
+- complete SQLite history, only if lightweight history becomes insufficient (per-deck stats persist in JSON as of 1.4 — a database is unwarranted until per-period/time-series queries are needed);
 - multiple destinations.
