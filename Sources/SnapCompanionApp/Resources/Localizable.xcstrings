@@ -1,7 +1,7 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "sectionSession" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Session" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sessão" } } } },
+    "sectionSession" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Stats" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Estatísticas" } } } },
     "statsTitle" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Deck performance" } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Desempenho por deck" } } } },
     "statsSubtitle" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Wins, losses, and net cubes across all your matches." } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Vitórias, derrotas e cubos líquidos de todas as suas partidas." } } } },
     "statsEmpty" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No matches recorded yet." } }, "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhuma partida registrada ainda." } } } },
