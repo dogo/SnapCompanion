@@ -3,14 +3,26 @@ import SwiftUI
 
 struct SessionStatsView: View {
     @ObservedObject var model: AppModel
+    @State private var confirmingReset = false
 
     var body: some View {
         let stats = model.sessionStats
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(.statsTitle).font(.largeTitle.bold())
-                    Text(.statsSubtitle).foregroundStyle(.secondary)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(.statsTitle).font(.largeTitle.bold())
+                        Text(.statsSubtitle).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if !stats.isEmpty {
+                        Button(role: .destructive) { confirmingReset = true } label: {
+                            Label { Text(.statsReset) } icon: { Image(systemName: "trash") }
+                        }
+                        .confirmationDialog(Text(.statsResetPrompt), isPresented: $confirmingReset) {
+                            Button(role: .destructive) { model.resetStats() } label: { Text(.statsReset) }
+                        }
+                    }
                 }
 
                 if stats.isEmpty {

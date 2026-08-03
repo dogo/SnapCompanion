@@ -213,6 +213,13 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Clears per-deck stats only. Keeps `lastRecordedGameId` so the match
+    /// currently on screen isn't re-counted on the next poll.
+    func resetStats() {
+        try? SessionStats.clear()
+        sessionStats = SessionStats()
+    }
+
     private func update(_ snapshot: SnapSnapshot, source: SnapSource) {
         self.source = source
         startMatchPolling()   // read GameState.json for match state + session stats
