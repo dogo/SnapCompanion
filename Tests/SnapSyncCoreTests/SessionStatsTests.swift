@@ -21,6 +21,18 @@ import Testing
     #expect(stats.decks.first?.deck == "Hela")  // most played first
 }
 
+@Test func sortsByChosenMetric() {
+    var stats = SessionStats()
+    stats.record(MatchResult(didWin: true, cubes: 2, deck: "Alpha", gameId: "a"))   // 1g, 100%, +2
+    stats.record(MatchResult(didWin: true, cubes: 9, deck: "Beta", gameId: "b1"))
+    stats.record(MatchResult(didWin: false, cubes: 9, deck: "Beta", gameId: "b2"))  // 2g, 50%, 0
+
+    #expect(stats.decks(by: .games).first?.deck == "Beta")     // most played
+    #expect(stats.decks(by: .winRate).first?.deck == "Alpha")  // higher win rate
+    #expect(stats.decks(by: .cubes).first?.deck == "Alpha")    // more net cubes
+    #expect(stats.decks(by: .name).map(\.deck) == ["Alpha", "Beta"])
+}
+
 @Test func recordsEachGameOnce() {
     var stats = SessionStats()
     #expect(stats.record(MatchResult(didWin: true, cubes: 8, deck: "Hela", gameId: "g1")) == true)

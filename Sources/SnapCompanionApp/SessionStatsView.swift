@@ -4,6 +4,7 @@ import SwiftUI
 struct SessionStatsView: View {
     @ObservedObject var model: AppModel
     @State private var confirmingReset = false
+    @State private var sort: SessionStats.Sort = .games
 
     var body: some View {
         let stats = model.sessionStats
@@ -36,16 +37,16 @@ struct SessionStatsView: View {
                 } else {
                     Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 10) {
                         GridRow {
-                            Text(.statsColDeck)
-                            Text(.statsColRecord).gridColumnAlignment(.trailing)
-                            Text(.statsColWinRate).gridColumnAlignment(.trailing)
-                            Text(.statsColCubes).gridColumnAlignment(.trailing)
+                            header(.statsColDeck, .name)
+                            header(.statsColRecord, .games).gridColumnAlignment(.trailing)
+                            header(.statsColWinRate, .winRate).gridColumnAlignment(.trailing)
+                            header(.statsColCubes, .cubes).gridColumnAlignment(.trailing)
                         }
                         .font(.caption.bold()).foregroundStyle(.secondary)
 
                         Divider().gridCellColumns(4)
 
-                        ForEach(stats.decks) { row(for: $0) }
+                        ForEach(stats.decks(by: sort)) { row(for: $0) }
 
                         Divider().gridCellColumns(4)
                         GridRow {
@@ -60,6 +61,17 @@ struct SessionStatsView: View {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func header(_ title: LocalizedStringResource, _ key: SessionStats.Sort) -> some View {
+        Button { sort = key } label: {
+            HStack(spacing: 2) {
+                Text(title)
+                if sort == key { Image(systemName: "chevron.down").font(.caption2) }
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(sort == key ? Color.primary : .secondary)
     }
 
     private func row(for stat: DeckStat) -> some View {

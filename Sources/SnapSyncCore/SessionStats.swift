@@ -67,10 +67,22 @@ public struct SessionStats: Sendable, Equatable, Codable {
         return true
     }
 
-    /// Decks by most-played, then name.
-    public var decks: [DeckStat] {
-        byDeck.values.sorted { $0.games != $1.games ? $0.games > $1.games : $0.deck < $1.deck }
+    public enum Sort: Sendable { case games, winRate, cubes, name }
+
+    /// Decks sorted by the chosen metric (descending), ties broken by name.
+    public func decks(by sort: Sort = .games) -> [DeckStat] {
+        byDeck.values.sorted { a, b in
+            switch sort {
+            case .games: return a.games != b.games ? a.games > b.games : a.deck < b.deck
+            case .winRate: return a.winRate != b.winRate ? a.winRate > b.winRate : a.deck < b.deck
+            case .cubes: return a.cubes != b.cubes ? a.cubes > b.cubes : a.deck < b.deck
+            case .name: return a.deck < b.deck
+            }
+        }
     }
+
+    /// Decks by most-played, then name.
+    public var decks: [DeckStat] { decks(by: .games) }
     public var totalGames: Int { byDeck.values.reduce(0) { $0 + $1.games } }
     public var totalWins: Int { byDeck.values.reduce(0) { $0 + $1.wins } }
     public var totalCubes: Int { byDeck.values.reduce(0) { $0 + $1.cubes } }
