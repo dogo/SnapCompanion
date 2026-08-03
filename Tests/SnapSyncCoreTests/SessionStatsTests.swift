@@ -34,6 +34,25 @@ import Testing
     #expect(stats.isEmpty)
 }
 
+@Test func persistsAcrossReloadAndKeepsDedup() throws {
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("deck-stats-\(UUID()).json")
+    defer { try? SessionStats.clear(at: url) }
+
+    var stats = SessionStats()
+    stats.record(MatchResult(didWin: true, cubes: 8, deck: "Hela", gameId: "g1"))
+    try stats.save(to: url)
+
+    let reloaded = SessionStats.load(from: url)
+    #expect(reloaded.totalGames == 1)
+    #expect(reloaded.decks.first?.deck == "Hela")
+
+    // gameId already counted before the "relaunch" is not double-counted.
+    var again = reloaded
+    #expect(again.record(MatchResult(didWin: true, cubes: 8, deck: "Hela", gameId: "g1")) == false)
+    #expect(again.totalGames == 1)
+}
+
 @Test func parsesDeckAndGameIdFromResult() {
     let items = """
     {"AccountId":"me-123","IsWinner":true,"FinalCubeValue":8,"Deck":{"Name":"Wakanda Protocol"}}

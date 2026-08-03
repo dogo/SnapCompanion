@@ -1,7 +1,7 @@
 import Foundation
 
-/// Per-deck record for the current session.
-public struct DeckStat: Sendable, Equatable, Identifiable {
+/// Per-deck record.
+public struct DeckStat: Sendable, Equatable, Identifiable, Codable {
     public let deck: String
     public var games: Int
     public var wins: Int
@@ -12,13 +12,47 @@ public struct DeckStat: Sendable, Equatable, Identifiable {
     public var winRate: Double { games == 0 ? 0 : Double(wins) / Double(games) }
 }
 
-/// Aggregates finished-match results per deck for the current app session.
-/// In-memory only — session stats reset when the app relaunches (no database).
-public struct SessionStats: Sendable, Equatable {
+/// Aggregates finished-match results per deck. Persisted to a private JSON file
+/// so per-deck history survives app relaunches (no database). Dedup by `gameId`
+/// carries across relaunches via the stored `seenGames`.
+public struct SessionStats: Sendable, Equatable, Codable {
     private var byDeck: [String: DeckStat] = [:]
+    // ponytail: seenGames grows one entry per game forever; a personal match log
+    // stays tiny for years. Cap it (keep last N) only if the JSON ever gets large.
     private var seenGames: Set<String> = []
 
     public init() {}
+
+    public static var defaultURL: URL {
+        SyncCheckpoint.defaultURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("deck-stats.json")
+    }
+
+    /// Loads persisted stats, or empty stats if absent/unreadable.
+    public static func load(from url: URL = defaultURL) -> SessionStats {
+        guard FileManager.default.fileExists(atPath: url.path) else { return SessionStats() }
+        do {
+            try securePrivateFile(at: url)
+            return try JSONDecoder().decode(SessionStats.self, from: Data(contentsOf: url))
+        } catch {
+            return SessionStats()
+        }
+    }
+
+    public func save(to url: URL = defaultURL) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try JSONEncoder().encode(self).write(to: url, options: .atomic)
+        try securePrivateFile(at: url)
+    }
+
+    public static func clear(at url: URL = defaultURL) throws {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        try FileManager.default.removeItem(at: url)
+    }
 
     /// Records a finished match, once per `gameId`. Returns true if it counted.
     @discardableResult

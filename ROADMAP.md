@@ -156,6 +156,7 @@ A native macOS app that locates local Marvel Snap data, generates a normalized s
 - Detect new cards, variants, and deck changes. ✅
 - Persist private JSON (`0600`) without SQLite. ✅
 - Preserve the latest diff when only resources or boosters change. ✅
+- Persist per-deck stats (wins/losses/net cubes) to private JSON so they survive relaunch, deduped by `gameId`. ✅
 
 ### 0.9 — Inventory and resources ✅
 
@@ -213,5 +214,5 @@ Run the final signed and notarized DMG smoke test for `1.3.0`.
 
 Add only when supported by proven demand:
 
-- complete SQLite history, only if lightweight history becomes insufficient;
+- complete SQLite history, only if lightweight history becomes insufficient (per-deck stats now persist in JSON — a database is unwarranted until per-period/time-series queries are needed);
 - multiple destinations.

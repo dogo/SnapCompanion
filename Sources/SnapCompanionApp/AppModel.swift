@@ -26,7 +26,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var isSyncing = false
     @Published private(set) var hasError = false
     @Published private(set) var match: MatchState?
-    @Published private(set) var sessionStats = SessionStats()
+    @Published private(set) var sessionStats = SessionStats.load()
     private var lastRecordedGameId = ""
     @Published private(set) var opponentCards: [String] = []
     @Published private(set) var opponentName = ""
@@ -184,6 +184,7 @@ final class AppModel: ObservableObject {
             try SyncCheckpoint.clear()
             try SyncOutbox.remove()
             try SnapshotHistoryStore.clear()
+            try SessionStats.clear()
             try CardCatalog.clear()
             scopedURL?.stopAccessingSecurityScopedResource()
             scopedURL = nil
@@ -201,6 +202,8 @@ final class AppModel: ObservableObject {
             wildBoosters = nil
             boosterCount = 0
             lastChange = nil
+            sessionStats = SessionStats()
+            lastRecordedGameId = ""
             sourcePath = "—"
             statusText = String(localized: .statusLocalDataRemoved)
             hasError = false
@@ -317,7 +320,9 @@ final class AppModel: ObservableObject {
             // Tally each finished match once into the per-deck session stats.
             if let result = latest?.result, result.gameId != lastRecordedGameId {
                 lastRecordedGameId = result.gameId
-                sessionStats.record(result)
+                if sessionStats.record(result) {
+                    try? sessionStats.save()
+                }
             }
         }
         // Live match snapshot written by the proxy system extension.
