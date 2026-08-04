@@ -215,6 +215,12 @@ Criteria:
 - Session page renamed to Stats; new strings localized in English and Brazilian Portuguese. ✅
 - Bundle promoted to `1.4.0`, signed and notarized.
 
+### 1.4.1 — Menu shortcuts from the app window ✅
+
+- Sync, automatic sync, overlay and live-tracking shortcuts fire while the app window is focused, not only when the status menu is open. ✅
+- Shared `SyncCommands` view backs both the menu bar and the window commands. ✅
+- Bundle promoted to `1.4.1`, signed and notarized.
+
 ## Next step
 
 Gather usage before deciding on time-series history or multiple destinations.
