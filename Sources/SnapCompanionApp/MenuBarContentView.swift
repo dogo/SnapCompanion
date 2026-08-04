@@ -9,33 +9,7 @@ struct MenuBarContentView: View {
 
         Divider()
 
-        Button(action: synchronize) {
-            Label {
-                Text(model.isSyncing ? .statusSyncing : .syncNow)
-            } icon: {
-                if model.isSyncing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                }
-            }
-        }
-        .keyboardShortcut("r")
-        .disabled(model.canSync == false || model.isSyncing || model.isConnecting)
-
-        Toggle(isOn: $model.automaticSyncEnabled) {
-            Text(.automaticSync)
-        }
-        .keyboardShortcut("a", modifiers: [.command, .shift])
-
-        Button {
-            model.toggleOverlay()
-        } label: {
-            Text(model.isOverlayVisible ? .overlayHide : .overlayShow)
-        }
-        .keyboardShortcut("o", modifiers: [.command, .shift])
-        .disabled(model.canConnect == false)
+        SyncCommands(model: model)
 
         Button(action: openDashboard) {
             Text(.openWindow)
@@ -43,14 +17,6 @@ struct MenuBarContentView: View {
         .keyboardShortcut("o")
 
         Divider()
-
-        // Activates the transparent-proxy system extension for live tracking.
-        Button {
-            model.proxy.activate()
-        } label: {
-            Text(.liveTracking(model.proxy.status))
-        }
-        .keyboardShortcut("l", modifiers: [.command, .shift])
 
         // Trusts the per-install MITM CA (one admin prompt). Auto-runs on enable
         // too; here as an explicit re-trigger.
@@ -78,10 +44,6 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func synchronize() {
-        Task { await model.synchronize() }
-    }
-
     private func openDashboard() {
         openWindow(id: "dashboard")
         NSApplication.shared.activate(ignoringOtherApps: true)
@@ -89,5 +51,51 @@ struct MenuBarContentView: View {
 
     private func quit() {
         NSApplication.shared.terminate(nil)
+    }
+}
+
+/// Shortcut-bearing actions shared by the menu bar and the window's commands,
+/// so the keyboard shortcuts fire whether the status menu or the app is focused.
+struct SyncCommands: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        Button {
+            Task { await model.synchronize() }
+        } label: {
+            Label {
+                Text(model.isSyncing ? .statusSyncing : .syncNow)
+            } icon: {
+                if model.isSyncing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                }
+            }
+        }
+        .keyboardShortcut("r")
+        .disabled(model.canSync == false || model.isSyncing || model.isConnecting)
+
+        Toggle(isOn: $model.automaticSyncEnabled) {
+            Text(.automaticSync)
+        }
+        .keyboardShortcut("a", modifiers: [.command, .shift])
+
+        Button {
+            model.toggleOverlay()
+        } label: {
+            Text(model.isOverlayVisible ? .overlayHide : .overlayShow)
+        }
+        .keyboardShortcut("o", modifiers: [.command, .shift])
+        .disabled(model.canConnect == false)
+
+        // Activates the transparent-proxy system extension for live tracking.
+        Button {
+            model.proxy.activate()
+        } label: {
+            Text(.liveTracking(model.proxy.status))
+        }
+        .keyboardShortcut("l", modifiers: [.command, .shift])
     }
 }
