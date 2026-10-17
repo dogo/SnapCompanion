@@ -26,6 +26,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var isSyncing = false
     @Published private(set) var hasError = false
     @Published private(set) var match: MatchState?
+    @Published private(set) var liveResult: MatchResult?   // from the proxy, before GameState.json has it
     @Published private(set) var sessionStats = SessionStats.load()
     private var lastRecordedGameId = ""
     @Published private(set) var opponentCards: [String] = []
@@ -358,17 +359,16 @@ final class AppModel: ObservableObject {
         if let source {
             let latest = MatchState.read(from: source)
             if latest != match { match = latest }
-            // Tally each finished match once into the per-deck session stats.
-            if let result = latest?.result, result.gameId != lastRecordedGameId {
-                lastRecordedGameId = result.gameId
-                if sessionStats.record(result) {
-                    try? sessionStats.save()
-                }
-            }
+            if let result = latest?.result { record(result) }
         }
         // Live match snapshot written by the proxy system extension.
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: "/tmp/snapcompanion-live-match.json")),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        let live = (obj["result"] as? [String: Any])
+            .flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+            .flatMap { try? JSONDecoder().decode(MatchResult.self, from: $0) }
+        if live != liveResult { liveResult = live }
+        if let live { record(live) }
         matchTurn = obj["turn"] as? Int ?? 0
         matchTotalTurns = obj["totalTurns"] as? Int ?? 0
         matchCubeValue = obj["cubeValue"] as? Int ?? 0
@@ -389,6 +389,15 @@ final class AppModel: ObservableObject {
         let deckCards = obj["opponentDeckCards"] as? [String] ?? cards
         opponentDeckCards = deckCards
         deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: deckCards, archetypes: archetypes)
+    }
+
+    /// Tallies each finished match once into the per-deck session stats (live or GameState.json).
+    private func record(_ result: MatchResult) {
+        guard result.gameId != lastRecordedGameId else { return }
+        lastRecordedGameId = result.gameId
+        if sessionStats.record(result) {
+            try? sessionStats.save()
+        }
     }
 
     private func loadArchetypes() {

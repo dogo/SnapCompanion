@@ -104,3 +104,34 @@ private let setup = """
     """)))
     #expect(snapshot.opponentName == "Random")
 }
+
+@Test func reportsResultFromGameResultChange() throws {
+    let tracker = MatchTracker()
+    _ = tracker.process(message(setup))
+    let snapshot = try #require(tracker.process(message("""
+    {"$type":"GameResultChange","Message":{"GameId":"g-1","FinalCubeValue":4,"GameResultAccountItems":[
+      {"AccountId":"me-123","IsWinner":true,"OpponentConceded":true,"Deck":{"Name":"Death Knull"}}]}}
+    """)))
+    let expected = MatchResult(didWin: true, cubes: 4, deck: "Death Knull", gameId: "g-1", retreat: .opponent)
+    #expect(snapshot.result == expected)
+
+    // Survives the trip through the live-match JSON the app reads.
+    let json = try #require(snapshot.json)
+    let obj = try #require(try JSONSerialization.jsonObject(with: json) as? [String: Any])
+    let roundTrip = try JSONSerialization.data(withJSONObject: try #require(obj["result"]))
+    #expect(try JSONDecoder().decode(MatchResult.self, from: roundTrip) == expected)
+
+    // A new match clears it.
+    #expect(try #require(tracker.process(message(setup))).result == nil)
+}
+
+@Test func readsResultMessageSentAsJSONText() throws {
+    let tracker = MatchTracker()
+    _ = tracker.process(message(setup))
+    let inner = #"{\"GameId\":\"g-2\",\"FinalCubeValue\":1,\"GameResultAccountItems\":[{\"AccountId\":\"me-123\",\"IsLoser\":true,\"Conceded\":true}]}"#
+    let snapshot = try #require(tracker.process(message("""
+    {"$type":"GameResultChange","Message":"\(inner)"}
+    """)))
+    #expect(snapshot.result?.didWin == false)
+    #expect(snapshot.result?.retreat == .you)
+}

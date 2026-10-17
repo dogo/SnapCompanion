@@ -42,15 +42,22 @@ public struct MatchState: Sendable, Equatable {
             cubeValue: game["CubeValue"] as? Int ?? 0,
             cardsPlayed: cards(player?["CardsPlayed"]),
             cardsDrawn: cards(player?["CardsDrawn"]),
-            result: result(game: game, myAccount: player?["AccountId"] as? String)
+            result: (game["ClientResultMessage"] as? [String: Any])
+                .flatMap { MatchResult.parse(message: $0, myAccount: player?["AccountId"] as? String) }
         )
     }
 
-    /// Reads the end-of-match result for the local player from `ClientResultMessage`,
-    /// matching the account item by the client's own AccountId. Nil mid-match.
-    private static func result(game: [String: Any], myAccount: String?) -> MatchResult? {
-        guard let message = game["ClientResultMessage"] as? [String: Any],
-              let items = message["GameResultAccountItems"] as? [[String: Any]] else { return nil }
+    private static func cards(_ value: Any?) -> [String] {
+        (value as? [String])?.filter { $0 != "None" } ?? []
+    }
+}
+
+extension MatchResult {
+    /// Reads the local player's outcome from a `GameResultMessage` (GameState.json's
+    /// `ClientResultMessage` or the live `GameResultChange`), matching the account item
+    /// by the client's own AccountId.
+    public static func parse(message: [String: Any], myAccount: String?) -> MatchResult? {
+        guard let items = message["GameResultAccountItems"] as? [[String: Any]] else { return nil }
         let mine = items.first { ($0["AccountId"] as? String) == myAccount } ?? items.first
         guard let mine else { return nil }
         let cubes = message["FinalCubeValue"] as? Int ?? mine["FinalCubeValue"] as? Int ?? 0
@@ -70,17 +77,13 @@ public struct MatchState: Sendable, Equatable {
             vsBot: vsBot
         )
     }
-
-    private static func cards(_ value: Any?) -> [String] {
-        (value as? [String])?.filter { $0 != "None" } ?? []
-    }
 }
 
 /// End-of-match outcome for the local player. `cubes` is the stake magnitude;
 /// the sign is implied by `didWin` (won +cubes / lost −cubes). `gameId` identifies
 /// the match (used to record each result once); `deck` is the deck the player used.
-public struct MatchResult: Sendable, Equatable {
-    public enum Retreat: Sendable { case you, opponent }
+public struct MatchResult: Sendable, Equatable, Codable {
+    public enum Retreat: String, Sendable, Codable { case you, opponent }
 
     public let didWin: Bool
     public let cubes: Int

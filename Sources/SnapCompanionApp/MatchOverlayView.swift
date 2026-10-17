@@ -29,7 +29,7 @@ struct MatchOverlayView: View {
                 .accessibilityLabel(Text(.overlayHide))
             }
 
-            if let result = model.match?.result {
+            if let result = model.liveResult ?? model.match?.result {
                 HStack(spacing: 8) {
                     Image(systemName: result.didWin ? "trophy.fill" : "xmark.seal.fill")
                     Text(result.didWin ? .overlayWon(result.cubes) : .overlayLost(result.cubes))

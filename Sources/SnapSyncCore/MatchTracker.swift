@@ -13,9 +13,11 @@ public struct MatchSnapshot: Equatable, Sendable {
     public var snaps = 0        // players who snapped (excludes the automatic final-turn doubling)
     public var youSnapped = false
     public var opponentSnapped = false
+    public var result: MatchResult?   // set the moment the server reports the outcome
 
     public var json: Data? {
-        try? JSONSerialization.data(withJSONObject: [
+        let result = result.flatMap { try? JSONSerialization.jsonObject(with: JSONEncoder().encode($0)) }
+        return try? JSONSerialization.data(withJSONObject: [
             "opponentName": opponentName,
             "opponentCards": opponentCards,
             "opponentDeckCards": opponentDeckCards,
@@ -27,6 +29,7 @@ public struct MatchSnapshot: Equatable, Sendable {
             "snaps": snaps,
             "youSnapped": youSnapped,
             "opponentSnapped": opponentSnapped,
+            "result": result ?? NSNull(),
         ])
     }
 }
@@ -82,6 +85,13 @@ public final class MatchTracker {
                         generated.insert(id)
                     }
                 }
+            } else if type.contains("GameResultChange") {
+                // Message may arrive as an object or as embedded JSON text.
+                let message = change["Message"] as? [String: Any]
+                    ?? (change["Message"] as? String).flatMap {
+                        try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any]
+                    }
+                snapshot.result = message.flatMap { MatchResult.parse(message: $0, myAccount: me) }
             } else if type.contains("PlayerStakesRaisedChange") || type.contains("GameRaiseStakesForNextTurnChange") {
                 if let player = change["PlayerEntityId"] as? Int { snappers.insert(player) }
             } else if type.contains("GameCreateLocationChange") || type.contains("LocationTransformChange") {
