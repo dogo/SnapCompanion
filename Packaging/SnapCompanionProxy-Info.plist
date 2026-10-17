@@ -11,7 +11,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>48</string>
+	<string>49</string>
 	<key>NSSystemExtensionUsageDescription</key>
 	<string>SnapCompanion uses a network extension to read live Marvel Snap match data locally.</string>
 	<key>NetworkExtension</key>

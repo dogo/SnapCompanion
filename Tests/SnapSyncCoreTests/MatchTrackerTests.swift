@@ -256,3 +256,26 @@ func tracksCapturedGoblinTransfersWithoutChangingDeckOrigin(account: String) thr
     """)))
     #expect(snapshot.locations == ["Utopia"])
 }
+
+// Shape from the reconnect capture: the opponent's Arishem never revealed, but its generated Viv named it.
+@Test func infersUnrevealedCreatorOfCardsGivenToOpponent() throws {
+    let tracker = MatchTracker()
+    _ = tracker.process(message(setup + """
+    ,{"$type":"GameCreateCardChange","EntityId":13,"OwnerEntityId":1},
+    {"$type":"GameCreateCardChange","EntityId":14,"OwnerEntityId":2}
+    """))
+    var snapshot = try #require(tracker.process(message("""
+    {"$type":"GameRevealCardChange","EntityId":10,"CardDefId":"Viv","CreatedByCardDefId":"Arishem"},
+    {"$type":"GameRevealCardChange","EntityId":11,"CardDefId":"Agent13","CreatedByCardDefId":null},
+    {"$type":"GameRevealCardChange","EntityId":12,"CardDefId":"Hulk","CreatedByCardDefId":"Agent13"},
+    {"$type":"GameRevealCardChange","EntityId":13,"CardDefId":"Rock","CreatedByCardDefId":"Rockslide"}
+    """)))
+    #expect(snapshot.opponentInferredDeckCards == ["Arishem"])   // Agent13 already seen; the Rock went to me
+    #expect(snapshot.opponentDeckCards == ["Agent13"])
+
+    snapshot = try #require(tracker.process(message("""
+    {"$type":"GameRevealCardChange","EntityId":14,"CardDefId":"Arishem","CreatedByCardDefId":null}
+    """)))
+    #expect(snapshot.opponentInferredDeckCards.isEmpty)
+    #expect(snapshot.opponentDeckCards == ["Agent13", "Arishem"])
+}

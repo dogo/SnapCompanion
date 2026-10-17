@@ -7,6 +7,7 @@ public struct MatchSnapshot: Equatable, Sendable {
     public var opponentCollectionLevel: Int?   // PlayerInfo.CollectionScore
     public var opponentCards: [String] = []
     public var opponentDeckCards: [String] = []   // revealed cards that started in their deck (no generated cards)
+    public var opponentInferredDeckCards: [String] = []  // never revealed, but named as the creator of a card given to them
     public var locations: [String] = []
     public var locationPowers: [[Int]] = []   // [you, opponent] per location, same order; empty until calibrated
     public var turn = 0
@@ -29,6 +30,7 @@ public struct MatchSnapshot: Equatable, Sendable {
             "opponentCollectionLevel": opponentCollectionLevel ?? NSNull(),
             "opponentCards": opponentCards,
             "opponentDeckCards": opponentDeckCards,
+            "opponentInferredDeckCards": opponentInferredDeckCards,
             "locations": locations,
             "locationPowers": locationPowers,
             "turn": turn,
@@ -56,6 +58,7 @@ public final class MatchTracker {
     private var revealed: [Int: String] = [:]    // card entityId -> CardDefId
     private var deckRevealed: [Int: String] = [:] // first known original identity, retained after transformation
     private var generated: Set<Int> = []         // card entityIds created mid-match by a card/location/effect
+    private var creatorOf: [Int: String] = [:]    // generated card entityId -> CreatedByCardDefId
     private var snappers: Set<Int> = []          // player entityIds that raised the stakes
     private var zones: [Int: (deck: Int, hand: Int, graveyard: Int)] = [:]  // player entityId -> zone entityIds
     private var cardZone: [Int: Int] = [:]       // card entityId -> zone entityId it sits in
@@ -121,6 +124,9 @@ public final class MatchTracker {
                     let creators = ["CreatedByCardDefId", "CreatedByLocationDefId", "CreatedByFactionDefId"]
                     if creators.contains(where: { (change[$0] as? String).map { !$0.isEmpty && $0 != "None" } ?? false }) {
                         generated.insert(id)
+                        if let creator = change["CreatedByCardDefId"] as? String, !creator.isEmpty, creator != "None" {
+                            creatorOf[id] = creator
+                        }
                     } else if !generated.contains(id), deckRevealed[id] == nil {
                         deckRevealed[id] = def
                     }
@@ -176,6 +182,13 @@ public final class MatchTracker {
                 .compactMap { revealed[$0] }
         }
         snapshot.opponentDeckCards = opponentCards(excludingGenerated: true)
+        // A creator can act without ever being revealed (e.g. Arishem's Game Start cards), naming a hidden deck card.
+        // shortcut: assumes the recipient owns the creator; a still-unrevealed card of ours that gives them cards would be
+        // misattributed. Upgrade by excluding our own full deck list once the tracker knows it.
+        let seen = Set(revealed.values)
+        snapshot.opponentInferredDeckCards = opponentEntity.map { opponent in
+            Set(creatorOf.filter { cardDeckOwner[$0.key] == opponent && !seen.contains($0.value) }.values).sorted()
+        } ?? []
         snapshot.locations = locations.sorted { $0.key < $1.key }.map(\.value)
         snapshot.locationPowers = iAmPlayer1.map { first in
             locations.keys.sorted().map { id in
@@ -193,7 +206,7 @@ public final class MatchTracker {
 
     private func reset() {
         players.removeAll(); profiles.removeAll(); cardOwner.removeAll(); revealed.removeAll(); generated.removeAll()
-        deckRevealed.removeAll(); cardDeckOwner.removeAll()
+        deckRevealed.removeAll(); cardDeckOwner.removeAll(); creatorOf.removeAll()
         snappers.removeAll(); zones.removeAll(); cardZone.removeAll()
         locations.removeAll(); powers.removeAll(); iAmPlayer1 = nil
         cubeValue = 0

@@ -135,7 +135,7 @@ There were also 373 `VfxChange` occurrences with structured context, 52 `Locatio
 
 `Message` contains `FinalCubeValue`, `TotalTurns`, `TurnsTaken`, `AllTurnsPlayed`, `LocationDefIdsAtEndOfGame`, and `GameResultAccountItems`.
 
-This match had **a single account entry**. It contains `IsWinner`, `EnergySpent`, `CardsDestroyed`, `LocationResults`, `LocationWinRecord`, rewards, `CardDefIdsDrawn` (11 items), `CardDefIdsPlayed` (10 items), `CardsSeen` (27 tuples), and a `Deck` with 12 entries in `Cards` and `CardIds`. List lengths do not establish unique cards. The exact meaning of the `CardsSeen` tuples remains unresolved.
+This match had **a single account entry**. It contains `IsWinner`, `EnergySpent`, `CardsDestroyed`, `LocationResults`, `LocationWinRecord`, rewards, `CardDefIdsDrawn` (11 items), `CardDefIdsPlayed` (10 items), `CardsSeen` (27 tuples), and a `Deck` with 12 entries in `Cards` and `CardIds`. List lengths do not establish unique cards. The tuple meaning was unresolved at this stage; see the later CardsSeen investigation below.
 
 `AccountId` values were masked, so this copy cannot attribute the entry to the local player or opponent. **There is no evidence here of the opponent's complete deck being sent or of hidden card identities arriving before reveal.** The 35 direct `GameCreateCardChange` occurrences carry owner/zone/card-back data without `CardDefId`; identity appears in `GameRevealCardChange`.
 
@@ -407,3 +407,254 @@ Another generic match is not needed to confirm this result. Any new control shou
 Expanded audit of all strings: `.build/hidden-vfx-deep-analysis.json`, reproducible with `python3 .build/analyze_hidden_cards.py .build/network-hidden-vfx-capture.jsonl --deep-vfx --output OUTPUT_PATH`. It covered **651 VFX strings**: 160 sets of four ability fields, five LocationDefId values, three CardDefId values, and three names in DisabledCardVfx. Of 120 events with AbilityOwnerDefType Card, 114 point to already-identified cards (64 local, 50 opponent); the remaining six point to player entity 7 with definition Spell07NicoMinoru, not a hidden card. No ability source associated with a known card preceded its first reveal. Of 21 visual draws, **11 opponent draws arrived without identity**, while ten local draws already had identity. There are 30 visual events linked to still-unknown opponent entities, but their ability names belong to already-known sources; they must not be attributed to the target cards.
 
 Additional false-positive control: record 14/change 0, `DisableVfx` has `DisabledCardVfx = [Lockheed, Gorr, GalactusFirstSteps]`, without an owner, target card, or zone. This is a global list of disabled effects, not evidence of three cards in the opponent's deck. The analyzer's self-check covers ordering before/after reveal, out-of-order context, local/global lists, numeric references, ability sources, and unidentified draws, and passed again after this audit.
+
+## CardsSeen investigation: tuple meaning and hidden-information boundary
+
+This follow-up used the four existing private state snapshots and their matching captures. No new match, network request, process-memory read, or application change was needed. Local artifacts: `.build/analyze_cards_seen.py`, `.build/cards-seen-analysis.json`, and `.build/cards-seen-metadata-analysis.json`. Python scripts and private reports remain outside Git. The state/capture SHA-256 values are retained in the report and match the corresponding sections above.
+
+### Tuple fields resolved from runtime types
+
+The saved JSON.NET records retain the full generic tuple type:
+
+```text
+System.ValueTuple`2[
+  [CubeDef.Id`1[[CubeDef.CardDef, SecondDinner.CubeDef]], SecondDinner.CubeDef],
+  [CubeDef.Id`1[[CubeDef.ArtVariantDef, SecondDinner.CubeDef]], SecondDinner.CubeDef]
+], mscorlib
+```
+
+Thus **Item1 is the card definition ID; Item2 is the art-variant definition ID**. Examples include `(Wolverine, Wolverine_01)`, `(NicoMinoru, NicoMinoru_08)`, and `(IronLad, IronLad_12)`. Item2 is not an entity ID, owner, count, turn, or rating. It is omitted in 54 of the 106 saved tuples; omission alone does not establish the exact default-variant semantics.
+
+Static metadata corroborates the field relationship: `CubeGame.Player._cardsSeenThisGame` (field token `0x4000e64`) and `CubePostGame.GameResultAccountItem.<CardsSeen>k__BackingField` (field token `0x4000033`) share runtime type index 19922. `Player.AddCardDefIdSeen(cardDefId, artVariantDefId)` has method index 66456/token `0x6002179`; its parameter type indices 17746 and 17712 match the card/variant getters in `GameRevealCardChange` and the corresponding definition types. These are declarations; the method body and call chain were not recovered. Runtime tuple types establish the field meaning independently of that missing call chain.
+
+### Exact comparison with received reveals
+
+For each snapshot, the analyzer resolves JSON.NET references, reads the local account's `ClientResultMessage.GameResultAccountItems[0].CardsSeen`, and compares Item1 values with direct server `GameRevealCardChange.CardDefId` values in capture order. It does not use avatar cards, result-deck entries, embedded historical requests, or ability names as reveal events.
+
+| Saved state | CardsSeen entries | Direct reveals | Ordered Item1 comparison | Local-owner reveals | Opponent-owner reveals | Repeated card/variant pairs |
+| --- | ---: | ---: | --- | ---: | ---: | ---: |
+| First match | 27 | 27 | Values masked in capture; count only | Unknown | Unknown | 8 |
+| Morph | 31 | 31 | Exact match | 17 | 14 | 14 |
+| Goblins | 19 | 19 | Exact match | 10 | 9 | 3 |
+| VFX | 29 | 29 | Exact match | 11 | 18 | 8 |
+
+**All 79 entries across the three captures retaining card values match the reveal sequence exactly**, with no additional card identity. The first capture only supports a 27-to-27 count comparison; its masked values do not support a name/order claim. Ownership columns use the card's current owner at each reveal, not an assumed original deck owner. Account aliases are interpreted separately for each session.
+
+The result entry belongs to the local account, but its CardsSeen list includes both local and opponent cards. It is therefore not a list of only that account's own cards or an opponent deck list. It has no per-tuple owner or entity ID. Across the four states, 33 entries repeat an already-present card/variant pair; repeated entries must not be interpreted as additional deck copies. In the Morph sample, the 31 entries match the 31 reveals despite the additional `CardMorphChange`, so treating every transformation as an extra CardsSeen entry would also be incorrect for this sample.
+
+### Conclusion and remaining limits
+
+CardsSeen is consistent with a record of card/variant observations through reveals in these matches. **It supplied no extra hidden identity beyond the received reveal events in the three value-preserving captures.** In the VFX match, entities 50 and 51 remain without explicit identity and add no inferred Vampiric Spear entry to CardsSeen. The list does not turn the local result's own 12-card Deck into the opponent's complete deck.
+
+The exact Item2-to-ArtVariantDefId sequence could not be compared against network values because the capture masks ArtVariantDefId; its meaning is established by the saved runtime type. No claim is made about every mode, reconnection path, or server implementation. The local analyzer's self-checks cover exact ordered duplicates, reversed order, and masked values, and passed. No new application build or tracker behavior was introduced. This resolves the tuple-format question and closes this candidate source for additional hidden identities in the examined captures; it does not prove that every other channel is free of such data.
+
+## Visibility path: received information versus local display
+
+The next investigation asked where card identities are withheld and which paths are supported by runtime evidence. It reused four captures with retained values (506 records), existing saved states, and the installed ARM64 UnityFramework. No new match, request, game modification, or process-memory access was required. The binary and metadata SHA-256 values remain `ce77aa7e6311ea4d473edd07efcc7fe82f6456b61107ed58e0d4788d0baf5777` and `1f5b65b5f276de45a40c584fd5cc20f89f856b0661d282dc946a152d220d850f`.
+
+### Observation before the tracker processes messages
+
+The audit in `.build/visibility-wire-analysis.json` covers 160 direct `GameCreateCardChange` events. **None contains a CardDefId key**, including cards created for the local player. Across the four matches, the initial 12 local and 12 opponent deck entities all arrive without identity in their creation events: 96 initial deck entities in total. Four local cards receive separate reveal events in the same initial record in each match; zero opponent cards do.
+
+In the format 3 capture, record 14 creates local entities 16–27 and opponent entities 28–39. The local initial identities arrive in record 14 at changes 34, 39, 43, and 76. The first opponent identity arrives in record 31/change 4 (Majestic Wingbeat, entity 35), approximately 24.193 seconds later. The opponent's 12 original entities are eventually revealed by final resolution, not exposed as a full deck in the initial batch.
+
+No explicit non-cosmetic CardDefId was found outside Changes across these four captures; other occurrences belong to avatars. PreviousRequests contains local staging requests, not card identities. This is a field-specific search over sanitized JSON, not an assertion about every possible encoding or arbitrary masked string.
+
+Recorder provenance matters: `TransparentProxyProvider` calls `capture.record(msg)` before `observe(msg)`, which invokes `tracker.process`. The decrypted server message is observed in the proxy before delivery to the game. The sanitizer preserves object keys and permits CardDefId values. Its absence from these shallow creation records is therefore not caused by MatchTracker or by a card-identity value mask. In this observed JSON change stream, the difference in information exists before local tracking or UI rendering.
+
+### The masked CurrentState field is an enum, not a snapshot
+
+All four CubeGame ConnectAccountResponse envelopes contain masked CurrentState and SerializationType strings. Their names alone initially left open whether an alternate serialized state had been overlooked. Structured metadata resolves this specific question:
+
+- `ConnectAccountResponse.get_CurrentState` returns type index 68278, exactly matching its nested State type. The declared values are Invalid, WaitForJoining, WaitForStarting, WaitForStaging, and GameEnded. **CurrentState is a phase enum, not a serialized game snapshot.**
+- `get_SerializationType` returns type index 76812, exactly matching the Json/MemoryPack enum in Cube.Serialization.Serialization. This describes a serialization choice; it is not a card-state payload itself.
+
+The enum resolution closes this candidate snapshot field. It does not establish coverage of unrecorded non-JSON formats or every other masked field.
+
+### Native method mapping and instruction evidence
+
+This pass progressed beyond declarations. The local `.build/map_visibility_metadata.py` analysis maps metadata method tokens into IL2CPP codegen module tables, decodes Mach-O chained pointers (format 6), validates module method counts and executable ranges, and uses LC_FUNCTION_STARTS to bound functions. Its output is `.build/visibility-metadata-analysis.json`. Metadata registration and encoded MethodDef/MethodSpec usage were resolved separately in `.build/visibility-filter-link-analysis.json`.
+
+Direct Xcode `llvm-objdump` disassembly of the exact selected ranges is retained in `.build/visibility-disassembly/`; the small predicate is also in `.build/visibility-predicate-disassembly.txt`. `.build/visibility-native-verification.json` independently checks mapped branch instructions, target addresses, and metadata-usage indices against original bytes. These are ordinary local static-analysis artifacts, **not REA decompilation Evidence or observations of execution**. REA session inspection reported no open target; the previously documented Hopper cleanup issue was not repaired, and no native result from that blocked provider is claimed. A broad nm inspection that stalled was stopped; selective disassembly completed without installing tools or changing configuration.
+
+| Method in the installed artifact | Native address | Supported static relationship |
+| --- | --- | --- |
+| Card.IsVisibleTo | 0x5db9d28 | Checks an explicit visible-player set, then zone/owner conditions |
+| Card.GetVisibility | 0x5dccfcc | Computes None/Owner/All from zone and Revealed state |
+| Card.RevealTo | 0x5dcd20c | Calls GetGameRevealCardChange, AddChange(accountId, change), and SetCardVisibleToPlayer |
+| Game.GetChangesForPlayer(accountId) | 0x5eb55d4 | Loads Game._changes and forwards to the static overload |
+| Game.GetChangesForPlayer(accountId, changes) | 0x5eb6e4c | Constructs the account predicate, filters, projects, and materializes changes |
+| Account predicate | 0x5ece26c | Accepts a null recipient; otherwise compares it to captured accountId |
+| Change projection | 0x5ec9994 | Returns the second tuple component |
+| GameManager.ApplyGameRevealCardChange | 0x225630c | Applies reveal data and calls GetLocalPlayer and SetCardVisibleToPlayer |
+
+The filter is not inferred solely from method names. The predicate's metadata usage cell 0x8bb2b70 resolves to method definition 65589, and its 32-byte body returns true for a null recipient or branches to System.String.op_Equality using captured accountId. The projection cell 0x8bb2968 resolves to method definition 65472; its body is `mov x0, x2; ret`. MethodSpec cells 0x8b8fa20, 0x8b8dc38, and 0x8b8f2e8 resolve to System.Linq.Enumerable.Where, Select, and ToList, respectively. The overload captures accountId at closure offset 0x10 and passes the corresponding delegates to those operations.
+
+The following is an equivalent reconstruction of that static filter, **not recovered original C# source**:
+
+```csharp
+changes
+    .Where(t => t.Item1 == null || t.Item1 == accountId)
+    .Select(t => t.Item2)
+    .ToList();
+```
+
+This tuple belongs to the recipient/change stream. It is separate from the card/art-variant tuple in CardsSeen and must not be interpreted using the same Item1/Item2 meanings.
+
+Field offsets corroborate the interpretation: Game._changes is at 0x180, Card._visibleToPlayerEntityIds at 0x1f0, Card._zone at 0x250, Card.Revealed at 0xa0, and Zone.ZoneId at 0x20. Explicit metadata defaults establish CardVisibility None=0, Owner=1, All=2 and ZoneId Deck=1, Hand=2, Location=3; these numeric values were not guessed from declaration order. GetVisibility returns Owner for a hand, Owner for an unrevealed location card, All for a revealed location card, and None for the other zone cases in this body. IsVisibleTo first allows players present in the explicit visibility set, so the zone rule must not be treated as an unconditional ban on an already-known card.
+
+### Client path and execution boundary
+
+The installed artifact includes both shared logic and client-specific modules. In SecondDinner.CubeGame.Logic.dll, RevealTo builds a reveal change and directs it to an account; GetChangesForPlayer filters recipient/change pairs. In App.Game.dll, the mapped static path is RemoteGame.OnConnectionMessageReceived → ProcessResponse → GameClient.ProcessResponse, with a separate ProcessNotification branch. In App.State.dll, ApplyGameRevealCardChange applies reveal data and marks the card visible to the local player. Generic/delegate dispatch beyond these inspected edges is not fully traced.
+
+Existing logs corroborate use of the network receive path, not every method above. A bounded read of ErrorLog.txt covered 3,216,263 bytes, SHA-256 `1e5f2a21acaccd30f74dc54c5cf926f2fdbafd062398da866dfccc6cb105ec0f`, with 1,062 OnConnectionMessageReceived and 912 RemoteGame|ProcessResponse mentions across historical matches. It contains no IsVisibleTo, GetChangesForPlayer, or ApplyGameRevealCardChange trace. The sanitized counts and scope are in `.build/visibility-runtime-log-summary.json`; the raw log was not copied. These logs are not a call stack proving that the shared filtering method executed in a particular remote match.
+
+### Finding and remaining work
+
+**Observed:** identities are already absent from the captured creation stream, and local/opponent reveals differ before the game UI or SnapCompanion tracker handles them. **Statically established:** the shipped shared logic has recipient-specific reveal generation and an account/broadcast filter, while the client has reveal-application and display-visibility paths. Together, these support an architecture that sends entities first and identities through selected reveal events; this is more than a UI merely hiding an otherwise complete initial deck in the inspected stream.
+
+The remote server binary was not inspected, and the shared filter's execution on that server was not observed. Its presence in the client package does not prove where every copy of that shared logic runs. No process-memory instrumentation, complete indirect-call trace, reconnect test, or non-JSON capture was performed. The remaining question is execution coverage and alternate paths, not the meaning of CurrentState or the existence of an account filter. No hidden complete deck access was demonstrated, and changing local display visibility alone would not establish the missing identities. No application code, extension version, signing, installation, or upload changed during this pass; Python helpers remain local under .build.
+
+## Reconnection control — completed
+
+The next control tests whether restarting the game during an active match produces a full replay, a snapshot, or incremental changes, and whether original deck identity survives transformations/transfers during that recovery. It also checks whether recovery exposes any explicit opponent identity absent before the interruption. No such result is assumed in advance.
+
+The existing version 48 was reused without a build-number change or application rebuild. System Settings showed its network extension disabled; it was re-enabled. The old provider session still held an expired capture, and starting an already-connected session did not invoke startProxy again. A temporary signed helper under `.build/ReconnectControl.app` used the app's existing NetworkExtension configuration access to stop only its transparent-proxy session; observed status changed from connected (3) to disconnected (1). The helper, its Swift source, private logs, and session metadata remain outside Git. The installed application was not replaced. An attempted noninteractive sudo process restart required a password and did not execute; the helper avoided needing that access.
+
+After restarting SnapCompanion with `--capture-network`, the provider confirmed a new capture at **08:54:36 on October 17, 2026**, `MITM server context loaded=true`, and `startProxy applied, error=nil`. The file is `/private/tmp/snapcompanion-network-FFE8B027-DED0-4C37-A0F0-9EAED7316274/messages.jsonl`, with private permissions and a deadline around **09:09:35**. Session details are in `.build/reconnect-session.json`.
+
+The user played with Morph and a goblin and requested reconnection after a positive ownership transfer. Only SNAP was terminated and relaunched; the proxy remained running, and no Retreat action was issued. The match continued through turn 6 and produced a result after recovery. No new game instrumentation, extension installation, or Apple upload was performed.
+
+### Full history replay and exact overlap
+
+The completed capture contains 120 records, 677,653 bytes, 55 client-to-server and 65 server-to-client messages across three connections (matchmaker, original game connection, recovered game connection). Its UTC interval is 2026-10-17 11:55:39.796310–11:59:27.999177. The private local copy is `.build/network-reconnect-capture.jsonl`, SHA-256 `058627f87300dae944f8844714b63467b2add0f093f1aee0f8bb6122c3b48e35`.
+
+The new connection starts at record 83 with ConnectAccountRequest; record 84 reports ChangeCount 496. GetChangesRequest starts from the omitted/default index 0. Seven GetChangesResponse pages at records 86–98 contain 80, 80, 80, 80, 80, 80, and 16 changes, covering indices 0–495. This recovery uses a full change-history replay, rather than a new complete card snapshot, in the observed path. Subsequent indexed responses extend the history to 661 changes through the match result.
+
+The original connection had received indices 0–486 before termination. **All 487 overlapping indexed changes match exactly as sanitized JSON, with zero differences**, including reveal identities. The requested pre-reconnection tracker snapshot was taken earlier, during turn 4; it is not the exact disconnect boundary, which occurred after additional turn-5 traffic.
+
+The nine changes at indices 487–495 were not previously received. They include the end of single-player staging, movement of entity 36, a GameRevealCardChange identifying it as GalactusFirstSteps at index 491, VFX, and the next staging setup. That identity is a newly received event beyond the old history boundary; it was not inserted into an earlier, previously hidden creation event. StartSinglePlayerStagingRequest/Response follows recovery at records 99–100. This distinction prevents treating missed gameplay events as evidence that reconnection exposed additional identities in old history.
+
+### Ownership survives recovery; Morph remains untested
+
+GreenGoblin entity 21 is revealed with StartedInDeckEntityId 3, the local deck, then receives CardOwnerChange to opponent player 7. Both events are present before disconnection and replayed unchanged. The final tracker includes GreenGoblin in opponentCards but excludes it from opponentDeckCards. Its four known opponent original deck definitions are MrFantasticFirstSteps, Thanos, Alioth, and GalactusFirstSteps. **The transferred goblin did not contaminate the opponent's original deck list after recovery.** No CardMorphChange occurred, so this match does not validate transformation recovery.
+
+### Hidden identities and evidence limits
+
+At final resolution, the folded received stream has five opponent hand entities without explicit identities and 19 opponent deck entities, of which only Thanos is known; the other 18 remain unidentified. These are current zone counts, including any generated cards, rather than a count of missing original deck slots. The result contains a 12-card local deck and no opponent result deck. **Reconnection did not demonstrate access to the complete hidden opponent deck in this control.**
+
+The local `.build/analyze_reconnect.py` compares indexed histories, rejects conflicting duplicate indices or gaps, checks the seven recovery pages and new-event boundary, verifies goblin origin/ownership and final tracker classification, and checks final hidden-zone counts. Its assertions passed; the private report is `.build/reconnect-analysis.json`. Final zones/result scope also use `.build/reconnect-hidden-analysis.json`; raw replay event totals from that general analyzer must not be interpreted as unique events because it processes both connections.
+
+The saved GameState copies lacked usable active player state, so they do not independently validate a persisted full state or hidden identities. This result rests on captured sanitized JSON and observed tracker output, not process memory or execution of remote server code. No application code changed and no new build or test suite run was needed. Morph recovery and alternate/non-JSON channels remain outside this control.
+
+## Non-JSON channel: MemoryPack is a stub and binary frames have no consumer — October 17, 2026
+
+This pass addresses the remaining "alternate/non-JSON channel" question, prompted by the `SerializationType {Json, MemoryPack}` enum carried in ConnectAccountResponse and by the capture's documented limit that non-JSON frames are not recorded. It is static analysis of the same installed artifact (UnityFramework SHA-256 `ce77aa7e…5777`, metadata `1f5b65b5…850f`). No match, network traffic, process-memory access, or application change was involved. The ad hoc helpers live in `.build/memorypack-probe/`, which Git ignores; they reuse the declaration parser from `inspect_snap_metadata.py` and the codegen-module mapping from `map_visibility_metadata.py`. As before, this is local `llvm-objdump` and metadata analysis, not REA decompilation Evidence.
+
+### MemoryPack in the client is a compile-time stub
+
+- The installed metadata has no MemoryPack runtime assembly. Every `MemoryPack.*` type, including `MemoryPackSerializer` (type 33095, methods Deserialize/DeserializeAsync/Serialize), is declared in **Infra.Compilation.dll**, alongside the source path string `Assets\Code\Infra\Compilation\DisableMemoryPack.cs`. The assembly holds only attribute classes, two enums, the serializer class, and one async state machine. It contains no formatter, buffer writer, or reader type.
+- `Game.SerializeMemoryPack` (0x5ea21a4, 88 bytes) tail-calls a shared generic body at 0x2b4fd64 using metadata-usage cell 0x8b9b068, which resolves to the MethodSpec `MemoryPackSerializer.Serialize<CubeGame.Game>`. That body's only metadata reference, cell 0x8b7f090, resolves to `System.Array.Empty<byte>`. It initializes that class and returns its static field. The resulting **Serialize<T> returns an empty byte array regardless of input.**
+- `Game.SerializeMemoryPackWithoutChanges` (0x5ea2340) swaps `Game._changes` (offset 0x180, consistent with earlier findings) for a new `List<ValueTuple<string, Change>>` (cells 0x8b28630/0x8b67060), calls the same Serialize<Game> body, and restores the list.
+- `Game.DeserializeMemoryPack` awaits `MemoryPackSerializer.DeserializeAsync<Game>` (cell 0x8b9b060, inside `<DeserializeMemoryPack>d__344.MoveNext`). The stub's own state machine `<DeserializeAsync>d__1`1` has only `<>1__state` and `<>t__builder`. It captures neither the `bytes` argument nor an awaiter. **Inference:** the async stub completes without reading its input. Its generic MoveNext body was not disassembled.
+- Control: resolving the earlier predicate cell 0x8bb2b70 with the same decoder again yields `<>c__DisplayClass534_0.<GetChangesForPlayer>b__0`.
+
+### The client calls none of the Game serialization methods directly
+
+A scan of every direct B/BL in the `__text` and `il2cpp` sections (about 30.7 million instruction words) found:
+
+| Target | Native address | Direct callers |
+| --- | --- | --- |
+| Shared `MemoryPackSerializer.Serialize<T>` body | 0x2b4fd64 | 2: Game.SerializeMemoryPack and Game.SerializeMemoryPackWithoutChanges only |
+| Game.SerializeMemoryPack / ...WithoutChanges / DeserializeMemoryPack | 0x5ea21a4 / 0x5ea2340 / 0x5ea1fb4 | 0 |
+| Game.SerializeJson / SerializeJsonWithoutChanges | 0x5ea20e0 / 0x5ea21fc | 0 |
+| ConnectAccountResponse.get_SerializationType | 0x5d7ac50 | 0 |
+| AnalyticGameInfo.set_SerializationType | 0x5319708 | 0 |
+
+All five Game methods are nonvirtual (flags 0x86/0x96), so vtable dispatch cannot hide a caller. Delegate, reflection, and inlined uses are not covered by a direct-branch scan. This applies especially to the 8-byte accessors, which are likely to be inlined or set by JSON.NET via reflection. The scan supports this conclusion: whole-Game serialization, in either format, is shared logic that the client build does not invoke directly. It does not prove the client never reads SerializationType.
+
+### The game WebSocket consumes text frames only
+
+`CubeUnity.Infra.Network.WebSocketConnection` wraps WebSocket4Net. Two direct callers reach its Connect (0x4dd031c) and add_MessageReceivedEvent (0x4dd01ac): **RemoteGame.Connect** (game connection, 0x1dde1e8) and **MatchmakerManager.Connect** (0x2093758). This covers both connections that SnapCompanion intercepts.
+
+Connect's metadata references create exactly four handler delegate types and target methods: `EventHandler` → OnWebSocketOpened and OnWebSocketClosed, `EventHandler<SuperSocket.ClientEngine.ErrorEventArgs>` → OnWebSocketError, and `EventHandler<WebSocket4Net.MessageReceivedEventArgs>` → OnWebSocketMessageReceived. Disconnect references the same four. **There is no `DataReceivedEventArgs` handler.** WebSocket4Net delivers binary frames through DataReceived, so the game's transport has no consumer for them. OnWebSocketMessageReceived only counts and timestamps the message and enqueues a `ConnectionMessageReceivedEvent` on `_eventQueue`.
+
+### Conclusion and limits
+
+The SerializationType enum and the MemoryPack API surface are shared-code residue. In this client build, MemoryPack serialization is stubbed out, and the transport would discard any binary frame unread. Together these **close the "MemoryPack/binary snapshot on the game WebSocket" candidate**. A hidden full deck in a binary frame could not reach the game through this path, so SnapCompanion's text-only capture would miss nothing the game uses there. This holds for the inspected client build only. It says nothing about what the server does with MemoryPack, and StreamChat, HTTP APIs, and asset downloads were not examined. Whether binary frames ever appear on the wire remains unobserved, because the capture still drops them silently. A per-opcode counter in `NetworkMessageCapture` would settle that empirically, but it is no longer needed to answer the visibility question. No application code, build, or installation changed during this pass.
+
+## HTTP API, StreamChat, and the Draft opponent deck — October 17, 2026
+
+This pass examines the channels the previous section left out. The analysis was static, plus read-only inspection of the game's local cache; no traffic was intercepted and nothing was sent. Helpers are in `.build/memorypack-probe/` (`q_http.py`, `q_other.py`, `q_chat.py`, `q_deckfields.py`, `q_draft.py`, `q_gp.py`, `q_cleanup.py`, `offsets.py`, `owner2.py`).
+
+### API surface: no live opponent-deck endpoint found
+
+The request/response declarations (CubeCollection 68, CubeGame 65, CubeShop 60, CubeLimitedTimeEvents 58, CubeClan 40, …) contain no replay, spectator, or match-history endpoint that returns another player's deck. Specific checks:
+
+- `MatchFoundNotification.Players[]` (matchmaker WS, already captured) carries PlayerInfo, ClanIdentity, Rank, LeaderboardStanding, SnapPoints, `DeckGroupDefId`, and MiniEventMatchInfo. DeckGroupDefId is an event-mode deck group, not a card list.
+- `GameReplay` (`ReplayChanges`/`ReplayInput`) starts from `StartReplayChangesWithFilePath(gameStateFilePath, localPlayerIndex)`, a local-file development path with no network fetch.
+- `GetDeckCheatRequest(PlayerEntityId)` → `GetDeckCheatResponse.CardDefIds` exists among the `*CheatRequest` types. As stated earlier, its presence does not establish authorization, and it was **not sent**.
+- `AnalyticLocationOutcomeInfo.OpponentCardDefIds` is client-generated analytics, not a server source.
+
+### StreamChat: social chat with voluntary deck sharing
+
+StreamChat (GetStream SDK, about 900 types) backs alliance chat. Game-defined payloads are `Cube.Common.ShareableDeck { Cards: ShareableCard[] }` (CardDefId plus cosmetics), sent by the ShareDeck button in `ClanFeedChatTextFieldController`. `GetChatConfigResponse` has `MaintainChatSocketInBattle`, but nothing links chat content to match state. Messages were not captured; StreamChat is a separate host that SnapCompanion does not MITM.
+
+### Draft: the server records the opponent's full deck after each game
+
+`Cube.Progression.Draft.DraftRunDocumentData.GamesPlayed[]` is a list of `GamePlayedData { GameId, Win, Tie, LossForgiven, OpponentAvatar, OpponentDeck: OpponentDeckCard[] }`, with `OpponentDeckCard { Card, Power, Cost, Augments }`. The client renders it in `DraftOpponentDeckViewController`/`DraftOpponentDeckCardViewController`, and `GamePlayedData.ToString` formats `OpponentDeckCards: {4}`.
+
+The writer is the shared facade `CustomGameDraftFacade.RecordGameResult(accountItem, customGameEvent, gameResultMessage)` (MoveNext 0x5242fb4):
+
+1. `FirstOrDefault<GameResultAccountItem>` with the predicate `item.AccountId != accountItem.AccountId` (0x523e024, a direct `String.op_Inequality`) selects the **opponent's** result item.
+2. `ResolveOpponentDeck(opponentItem)` (0x523d15c) reads `opponentItem+0x90` and `+0xe0`. The decoded field-offset table identifies these as `GameResultAccountItem.<Deck>` and `<MutationsByCardId>`. It reads the list at `+0x48` and checks `_size` at `+0x18`, using `Array.Empty<OpponentDeckCard>` when empty. It builds a `DefaultLoadoutResolver` and runs `Select<Card, OpponentDeckCard>(…).ToArray()`.
+3. The lambda (0x523e050) calls `PowerModifier`, `CostModifier`, `GetCardMutations`, and `Augments`, then `new OpponentDeckCard(...)`.
+
+Every card in the opponent's result Deck is mapped, revealed or not. The input is the server's `GameResultMessage`. The client's `ClientResultMessage` contains only the local item, as established earlier. This facade therefore runs where the full result exists, most plausibly on the server, but that execution is inferred, not observed.
+
+`CustomGameDraftCleanupFacade.RemoveOpponentSnapshots(draftRun)` (0x5238f4c) calls `GamePlayedData.WithoutOpponentSnapshot` (0x5239238 → ctor, 44 bytes). It is reached only through `CleanupCompletedRun` (0x5238f48) and `<CleanupCompletedRuns>d__10.MoveNext` (0x5239d44). **Hypothesis:** while a Draft run is active, its document retains each opponent's complete deck, and the data is stripped when the run completes.
+
+### Passive read path: the HTTP API response cache
+
+The HTTP/2 API is certificate-pinned and left in passthrough, but the iOS URL loading system caches its responses unencrypted in `Data/Library/Caches/com.nvsgames.snap/Cache.db` and `fsCachedData/`. On inspection the index held 26 entries from 11:57:11–11:58:33 UTC, including `global-cf…/v57.17/6/account/{loginAccount,getState,updateAccount,getPrivacySettingsConfig}` and `us-east-1-cf…/v57.17/6/progression/{profile,mission,reward,battlePass,conquest}/init`, `schema/executeMigration`, and `purchasing/getStoreSkuInfo`. Large bodies (over about 30 KB) live in fsCachedData; for example, `progression/profile/init` is a 35 KB file.
+
+Two older fsCachedData files that are no longer indexed (137,647 and 161,740 bytes, 08:58–08:59 local) contain Draft run documents. Across both, the **19 GamePlayedData entries all have `"OpponentDeck":[]` and no OpponentAvatar**. Every referenced run is listed under CompletedRuns and ActiveRuns is empty. This is consistent with the cleanup hypothesis; it neither confirms nor refutes active-run contents.
+
+**Sensitive:** the cached `loginAccount` response contains the account's AuthorizationToken (JWT) in plaintext. It was not copied into the repository or into any report. Any tool reading this cache must exclude account endpoints and never persist or transmit their bodies.
+
+### Next experiment
+
+Start a Draft run, finish one game while the run remains active, and then, without starting another game:
+
+1. Use read-only, private inspection of `Cache.db` and `fsCachedData` for a `GamePlayedData` with a non-empty `OpponentDeck`, recording only CardDefIds and counts.
+2. Compare it with the revealed opponent cards in a concurrent WebSocket capture.
+
+Twelve entries that include never-revealed cards would show post-game, complete-deck access in Draft. That is post-game data, not live in-match information. No access to the opponent's hidden deck *during* a match is shown by this pass.
+
+## Normal (non-event) gameplay: remaining channels checked — October 17, 2026
+
+The Draft finding above applies only to an event mode and is set aside. For ordinary ranked/unranked play, the following were checked statically:
+
+- **Post-game HTTP.** `CubePostGame.GameResultResponse` has only `GameResultFound` and `HighStakesTablesGameResultResponse`. The full `GameResultMessage`, `HighStakesTablesGameResult.MatchGameResultMessage`, is nested under the HighStakesTables event mode only. No normal-mode response type carries a GameResultMessage.
+- **Match history.** `Cube.Common.MatchHistoryRecentGameData` (in `progression/profile/init`) has IsWin/IsLoss, CubeDelta, turns, concede and stakes flags, `OpponentAccountId`, IsVsAi, AiConfigDefId, and Timestamp. It has **no card or deck field**.
+- **Matchmaking.** `MatchFoundNotification.Players[].PlayerInfo` has AccountId, region, Name, Title, Avatar, ReactionSet, CardBack, CollectionScore, HighWatermarkRank, and CollectionPrivacy. It has no cards.
+- **Collection privacy.** `CollectionPrivacy` controls who may view a player's collection. Its UI lives under App.Clan (`ClanCollectionPrivacyPopupHandler`), and the only matching request is `SetCollectionPrivacyRequest`. No request to fetch another account's collection was found under the names searched. Opponent card ownership is not available as a constraint for deck prediction.
+
+**Conclusion for normal play.** Across the WebSocket game stream, its non-JSON path, the HTTP API surface, the HTTP response cache, StreamChat, and matchmaking, nothing found exposes unrevealed opponent card identities, either during or after a normal match. The design is consistent: entities first, identities only through recipient-filtered reveals. The client's own result carries only its own deck. Remaining leverage for normal play lies in inference from received data, such as DeckPredictor and the modeling of revealed/generated cards, rather than in a hidden data source. The limits stated in earlier sections still apply: no server binary, no runtime trace of every indirect path, and a name-based API search.
+
+### Inference implemented: unrevealed creators of generated cards
+
+In the six value-preserving captures, 34 generated-card reveals carry `CreatedByCardDefId`. In 31 of them, the creator was already a known original of the same player. Of the remaining three, one is a chain (Ultron, itself generated by Valentina, created Drone). The other two are the reconnect match's Viv, entity 51. Viv went to opponent player 7 with `CreatedByCardDefId: Arishem`, and **Arishem was never revealed** in that capture. The helper is `.build/memorypack-probe/creator_evidence.py`.
+
+`MatchTracker` now records the creator of each generated card. It exposes `opponentInferredDeckCards`: creators of cards whose original deck owner is the opponent, excluding any CardDefId already revealed by either player. A later reveal of the creator moves it into `opponentDeckCards`. The app feeds the union to `DeckPredictor` and shows the inferred cards under "In deck, not yet seen". Known limit, marked as a `shortcut:` in code: a still-unrevealed card of ours that gives the opponent cards would be misattributed. `swift test` passed with 60 tests, including the new case, and the `SnapCompanionApp` scheme builds. The live overlay path has not yet been exercised in a match.
+
+### Live validation — build 49, October 17, 2026, 09:5x local
+
+Extension 49 was installed and activated, and the app was signed with the same identities, profiles, and entitlements as build 48. The prior build is preserved in `.build/SnapCompanion-v48.app`. One normal match was played with capture `/private/tmp/snapcompanion-network-FB6BFFFF-4576-4155-A8A4-C979A2E8DE0D/messages.jsonl`.
+
+- **Turn 1** (record 13/change 35): the opponent (player 2, deck 3) received generated TenRings, entity 40, with `CreatedByCardDefId: ShangChiMasterOfTheRings`. The live snapshot immediately showed `opponentInferredDeckCards = ["ShangChiMasterOfTheRings"]`.
+- **Turns 2–6**: the inference persisted while seven other originals were revealed.
+- **Final resolution** (record 98/change 58): entity 21, ShangChiMasterOfTheRings, was revealed with `StartedInDeckEntityId` 3, the opponent's deck. The snapshot moved it into `opponentDeckCards` and `opponentInferredDeckCards` became empty. **True positive, known five turns before its reveal.**
+- **Hobgoblin**, entity 32, started in deck 8, the local player 7. It appeared in opponentCards but correctly stayed out of the opponent's deck lists. TenRings later morphed into TenRingsUpgrade (change 79) and was not counted as a deck card.
+
+The match produced no false attribution. One match does not measure the misattribution risk noted in the code shortcut.

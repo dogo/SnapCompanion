@@ -46,6 +46,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var opponentDeckCount = 0
     @Published private(set) var opponentGraveyard: [String] = []
     @Published private(set) var opponentDeckCards: [String] = []
+    @Published private(set) var opponentInferredDeckCards: [String] = []
     @Published private(set) var metaFetchedAt: Date?
     @Published private(set) var deckPredictions: [DeckPrediction] = []
     @Published private(set) var isOverlayVisible = false
@@ -399,7 +400,8 @@ final class AppModel: ObservableObject {
         // Predict only from cards that started in their deck; older proxy builds lack the key.
         let deckCards = obj["opponentDeckCards"] as? [String] ?? cards
         opponentDeckCards = deckCards
-        deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: deckCards, archetypes: archetypes)
+        opponentInferredDeckCards = obj["opponentInferredDeckCards"] as? [String] ?? []
+        deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: deckCards + opponentInferredDeckCards, archetypes: archetypes)
     }
 
     /// Tallies each finished match once into the per-deck session stats (live or GameState.json).

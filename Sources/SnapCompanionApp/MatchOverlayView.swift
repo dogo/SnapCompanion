@@ -130,6 +130,19 @@ struct MatchOverlayView: View {
                 }
             }
 
+            if model.opponentInferredDeckCards.isEmpty == false {
+                Text(.overlayInferred(model.opponentInferredDeckCards.count))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    ForEach(Array(model.opponentInferredDeckCards.enumerated()), id: \.offset) { _, id in
+                        CollectionCardImageView(definitionID: id)
+                            .frame(width: 40, height: 40)
+                            .opacity(0.6)
+                    }
+                }
+            }
+
             if model.opponentGraveyard.isEmpty == false {
                 Text(.overlayGraveyard(model.opponentGraveyard.count))
                     .font(.caption)
