@@ -41,6 +41,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var locations: [String] = []
     @Published private(set) var locationPowers: [[Int]] = []
     @Published private(set) var opponentHandCount = 0
+    @Published private(set) var opponentRank: Int?
+    @Published private(set) var opponentCollectionLevel: Int?
     @Published private(set) var opponentDeckCount = 0
     @Published private(set) var opponentGraveyard: [String] = []
     @Published private(set) var opponentDeckCards: [String] = []
@@ -381,6 +383,8 @@ final class AppModel: ObservableObject {
         locations = obj["locations"] as? [String] ?? []
         locationPowers = obj["locationPowers"] as? [[Int]] ?? []
         opponentHandCount = obj["opponentHandCount"] as? Int ?? 0
+        opponentRank = obj["opponentRank"] as? Int
+        opponentCollectionLevel = obj["opponentCollectionLevel"] as? Int
         opponentDeckCount = obj["opponentDeckCount"] as? Int ?? 0
         opponentGraveyard = obj["opponentGraveyard"] as? [String] ?? []
         let name = obj["opponentName"] as? String ?? ""

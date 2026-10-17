@@ -161,3 +161,27 @@ private let setup = """
     #expect(snapshot.opponentDeckCount == 1)
     #expect(snapshot.opponentGraveyard == ["Nova"])
 }
+
+@Test func readsOpponentProfileNumbersBareOrWrapped() throws {
+    let tracker = MatchTracker()
+    let snapshot = try #require(tracker.process(message("""
+    {"$type":"GameCreateChange","StartingCubeValue":1},
+    {"$type":"GameCreatePlayerChange","EntityId":1,"PlayerInfo":{"AccountId":"me-123","Name":"Me","HighWatermarkRank":90}},
+    {"$type":"GameCreatePlayerChange","EntityId":2,"PlayerInfo":{"AccountId":"opp-999","Name":"Opp",
+     "HighWatermarkRank":70,"CollectionScore":{"Amount":4200}}}
+    """)))
+    #expect(snapshot.opponentRank == 70)
+    #expect(snapshot.opponentCollectionLevel == 4200)
+}
+
+@Test func dropsDestroyedLocation() throws {
+    let tracker = MatchTracker()
+    _ = tracker.process(message(setup + """
+    ,{"$type":"GameCreateLocationChange","EntityId":20,"LocationDefId":"Ruins"},
+    {"$type":"GameCreateLocationChange","EntityId":21,"LocationDefId":"Utopia"}
+    """))
+    let snapshot = try #require(tracker.process(message("""
+    {"$type":"GameDestroyLocationChange","EntityId":20}
+    """)))
+    #expect(snapshot.locations == ["Utopia"])
+}

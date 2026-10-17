@@ -17,6 +17,14 @@ struct MatchOverlayView: View {
                             .font(.caption2).bold()
                             .foregroundStyle(.orange)
                     }
+                    if model.opponentRank != nil || model.opponentCollectionLevel != nil {
+                        HStack(spacing: 8) {
+                            if let rank = model.opponentRank { Text(.overlayRank(rank)) }
+                            if let level = model.opponentCollectionLevel { Text(.overlayCollectionLevel(level)) }
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Button {

@@ -3,6 +3,8 @@ import Foundation
 /// A snapshot of what we know about the current match, written for the app.
 public struct MatchSnapshot: Equatable, Sendable {
     public var opponentName = ""
+    public var opponentRank: Int?              // highest rank reached (PlayerInfo.HighWatermarkRank)
+    public var opponentCollectionLevel: Int?   // PlayerInfo.CollectionScore
     public var opponentCards: [String] = []
     public var opponentDeckCards: [String] = []   // revealed cards that started in their deck (no generated cards)
     public var locations: [String] = []
@@ -23,6 +25,8 @@ public struct MatchSnapshot: Equatable, Sendable {
         let result = result.flatMap { try? JSONSerialization.jsonObject(with: JSONEncoder().encode($0)) }
         return try? JSONSerialization.data(withJSONObject: [
             "opponentName": opponentName,
+            "opponentRank": opponentRank ?? NSNull(),
+            "opponentCollectionLevel": opponentCollectionLevel ?? NSNull(),
             "opponentCards": opponentCards,
             "opponentDeckCards": opponentDeckCards,
             "locations": locations,
@@ -46,6 +50,7 @@ public struct MatchSnapshot: Equatable, Sendable {
 public final class MatchTracker {
     private var me: String?
     private var players: [Int: (account: String?, name: String)] = [:]
+    private var profiles: [Int: (rank: Int?, collection: Int?)] = [:]  // player entityId -> public profile numbers
     private var cardOwner: [Int: Int] = [:]      // card entityId -> owner (player) entityId
     private var revealed: [Int: String] = [:]    // card entityId -> CardDefId
     private var generated: Set<Int> = []         // card entityIds created mid-match by a card/location/effect
@@ -80,6 +85,7 @@ public final class MatchTracker {
                 if let id = change["EntityId"] as? Int {
                     let info = change["PlayerInfo"] as? [String: Any]
                     players[id] = (info?["AccountId"] as? String, (info?["Name"] as? String ?? "").trimmingCharacters(in: .whitespaces))
+                    profiles[id] = (Self.number(info?["HighWatermarkRank"]), Self.number(info?["CollectionScore"]))
                     zones[id] = (change["DeckEntityId"] as? Int ?? -1, change["HandEntityId"] as? Int ?? -1,
                                  change["GraveyardEntityId"] as? Int ?? -1)
                 }
@@ -102,6 +108,11 @@ public final class MatchTracker {
                     if creators.contains(where: { (change[$0] as? String).map { !$0.isEmpty && $0 != "None" } ?? false }) {
                         generated.insert(id)
                     }
+                }
+            } else if type.contains("GameDestroyLocationChange") {
+                if let id = change["EntityId"] as? Int {
+                    locations[id] = nil
+                    powers[id] = nil
                 }
             } else if type.contains("GameResultChange") {
                 // Message may arrive as an object or as embedded JSON text.
@@ -139,6 +150,8 @@ public final class MatchTracker {
         if let total = ints["TotalTurns"] { snapshot.totalTurns = total }
 
         snapshot.opponentName = opponentName
+        snapshot.opponentRank = opponentEntity.flatMap { profiles[$0]?.rank }
+        snapshot.opponentCollectionLevel = opponentEntity.flatMap { profiles[$0]?.collection }
         snapshot.opponentCards = opponentCards()
         if let opponent = opponentEntity, let zone = zones[opponent] {
             snapshot.opponentHandCount = cardZone.values.filter { $0 == zone.hand }.count
@@ -163,7 +176,7 @@ public final class MatchTracker {
     }
 
     private func reset() {
-        players.removeAll(); cardOwner.removeAll(); revealed.removeAll(); generated.removeAll()
+        players.removeAll(); profiles.removeAll(); cardOwner.removeAll(); revealed.removeAll(); generated.removeAll()
         snappers.removeAll(); zones.removeAll(); cardZone.removeAll()
         locations.removeAll(); powers.removeAll(); iAmPlayer1 = nil
         cubeValue = 0
@@ -191,6 +204,13 @@ public final class MatchTracker {
             cards.append(def)
         }
         return cards
+    }
+
+    /// A profile number sent either bare or wrapped in an object (e.g. CollectionScore { Amount }).
+    private static func number(_ value: Any?) -> Int? {
+        if let n = value as? Int { return n }
+        guard let object = value as? [String: Any] else { return nil }
+        return ["Amount", "Rank", "Value", "Level"].lazy.compactMap { object[$0] as? Int }.first
     }
 
     /// Finds the last integer value for each key anywhere in a nested JSON object.
