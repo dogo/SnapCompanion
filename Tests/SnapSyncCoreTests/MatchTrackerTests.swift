@@ -135,3 +135,29 @@ private let setup = """
     #expect(snapshot.result?.didWin == false)
     #expect(snapshot.result?.retreat == .you)
 }
+
+@Test func countsOpponentHandDeckAndRevealedGraveyard() throws {
+    let tracker = MatchTracker()
+    _ = tracker.process(message("""
+    {"$type":"GameCreateChange","StartingCubeValue":1},
+    {"$type":"GameCreatePlayerChange","EntityId":1,"PlayerInfo":{"AccountId":"me-123","Name":"Me"},
+     "DeckEntityId":101,"HandEntityId":102,"GraveyardEntityId":103},
+    {"$type":"GameCreatePlayerChange","EntityId":2,"PlayerInfo":{"AccountId":"opp-999","Name":"Opp"},
+     "DeckEntityId":201,"HandEntityId":202,"GraveyardEntityId":203},
+    {"$type":"GameCreateCardChange","EntityId":10,"OwnerEntityId":2,"ZoneEntityId":201},
+    {"$type":"GameCreateCardChange","EntityId":11,"OwnerEntityId":2,"ZoneEntityId":201},
+    {"$type":"GameCreateCardChange","EntityId":12,"OwnerEntityId":2,"ZoneEntityId":201},
+    {"$type":"GameCreateCardChange","EntityId":13,"OwnerEntityId":1,"ZoneEntityId":101}
+    """))
+    // Opponent draws two; one is played (revealed at a location) and later destroyed.
+    let snapshot = try #require(tracker.process(message("""
+    {"$type":"CardMoveChange","CardEntityId":10,"TargetZoneEntityId":202},
+    {"$type":"CardMoveChange","CardEntityId":11,"TargetZoneEntityId":202},
+    {"$type":"CardMoveChange","CardEntityId":11,"TargetZoneEntityId":20},
+    {"$type":"GameRevealCardChange","EntityId":11,"CardDefId":"Nova"},
+    {"$type":"CardMoveChange","CardEntityId":11,"TargetZoneEntityId":203}
+    """)))
+    #expect(snapshot.opponentHandCount == 1)
+    #expect(snapshot.opponentDeckCount == 1)
+    #expect(snapshot.opponentGraveyard == ["Nova"])
+}

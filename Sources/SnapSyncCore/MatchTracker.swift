@@ -14,6 +14,10 @@ public struct MatchSnapshot: Equatable, Sendable {
     public var youSnapped = false
     public var opponentSnapped = false
     public var result: MatchResult?   // set the moment the server reports the outcome
+    // Public info the game already shows: opponent hand/deck sizes and their revealed cards now in the graveyard.
+    public var opponentHandCount = 0
+    public var opponentDeckCount = 0
+    public var opponentGraveyard: [String] = []
 
     public var json: Data? {
         let result = result.flatMap { try? JSONSerialization.jsonObject(with: JSONEncoder().encode($0)) }
@@ -30,6 +34,9 @@ public struct MatchSnapshot: Equatable, Sendable {
             "youSnapped": youSnapped,
             "opponentSnapped": opponentSnapped,
             "result": result ?? NSNull(),
+            "opponentHandCount": opponentHandCount,
+            "opponentDeckCount": opponentDeckCount,
+            "opponentGraveyard": opponentGraveyard,
         ])
     }
 }
@@ -43,6 +50,8 @@ public final class MatchTracker {
     private var revealed: [Int: String] = [:]    // card entityId -> CardDefId
     private var generated: Set<Int> = []         // card entityIds created mid-match by a card/location/effect
     private var snappers: Set<Int> = []          // player entityIds that raised the stakes
+    private var zones: [Int: (deck: Int, hand: Int, graveyard: Int)] = [:]  // player entityId -> zone entityIds
+    private var cardZone: [Int: Int] = [:]       // card entityId -> zone entityId it sits in
     private var locations: [Int: String] = [:]   // location entityId -> LocationDefId
     private var powers: [Int: (p1: Int, p2: Int)] = [:]  // location entityId -> Player1/Player2 power
     private var iAmPlayer1: Bool?                // learned from a location's winner; nil until known
@@ -71,10 +80,19 @@ public final class MatchTracker {
                 if let id = change["EntityId"] as? Int {
                     let info = change["PlayerInfo"] as? [String: Any]
                     players[id] = (info?["AccountId"] as? String, (info?["Name"] as? String ?? "").trimmingCharacters(in: .whitespaces))
+                    zones[id] = (change["DeckEntityId"] as? Int ?? -1, change["HandEntityId"] as? Int ?? -1,
+                                 change["GraveyardEntityId"] as? Int ?? -1)
                 }
             } else if type.contains("GameCreateCardChange") {
                 if let id = change["EntityId"] as? Int, let owner = change["OwnerEntityId"] as? Int {
                     cardOwner[id] = owner
+                }
+                if let id = change["EntityId"] as? Int, let zone = change["ZoneEntityId"] as? Int {
+                    cardZone[id] = zone
+                }
+            } else if type.contains("CardMoveChange") {
+                if let id = change["CardEntityId"] as? Int, let zone = change["TargetZoneEntityId"] as? Int {
+                    cardZone[id] = zone
                 }
             } else if type.contains("GameRevealCardChange") {
                 if let id = change["EntityId"] as? Int, let def = change["CardDefId"] as? String {
@@ -122,6 +140,12 @@ public final class MatchTracker {
 
         snapshot.opponentName = opponentName
         snapshot.opponentCards = opponentCards()
+        if let opponent = opponentEntity, let zone = zones[opponent] {
+            snapshot.opponentHandCount = cardZone.values.filter { $0 == zone.hand }.count
+            snapshot.opponentDeckCount = cardZone.values.filter { $0 == zone.deck }.count
+            snapshot.opponentGraveyard = cardZone.filter { $0.value == zone.graveyard }.keys.sorted()
+                .compactMap { revealed[$0] }
+        }
         snapshot.opponentDeckCards = opponentCards(excludingGenerated: true)
         snapshot.locations = locations.sorted { $0.key < $1.key }.map(\.value)
         snapshot.locationPowers = iAmPlayer1.map { first in
@@ -140,7 +164,8 @@ public final class MatchTracker {
 
     private func reset() {
         players.removeAll(); cardOwner.removeAll(); revealed.removeAll(); generated.removeAll()
-        snappers.removeAll(); locations.removeAll(); powers.removeAll(); iAmPlayer1 = nil
+        snappers.removeAll(); zones.removeAll(); cardZone.removeAll()
+        locations.removeAll(); powers.removeAll(); iAmPlayer1 = nil
         cubeValue = 0
         snapshot = MatchSnapshot()
     }

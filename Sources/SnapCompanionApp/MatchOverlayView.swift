@@ -66,6 +66,13 @@ struct MatchOverlayView: View {
                         Image(systemName: "cube.fill")
                     }
                 }
+                if model.opponentHandCount + model.opponentDeckCount > 0 {
+                    Label {
+                        Text(.overlayHandDeck(model.opponentHandCount, model.opponentDeckCount))
+                    } icon: {
+                        Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+                    }
+                }
                 if model.matchSnaps > 0 {
                     Label {
                         if model.youSnapped && model.opponentSnapped {
@@ -111,6 +118,19 @@ struct MatchOverlayView: View {
                     ForEach(Array(model.opponentCards.enumerated()), id: \.offset) { _, id in
                         CollectionCardImageView(definitionID: id)
                             .frame(width: 62, height: 62)
+                    }
+                }
+            }
+
+            if model.opponentGraveyard.isEmpty == false {
+                Text(.overlayGraveyard(model.opponentGraveyard.count))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    ForEach(Array(model.opponentGraveyard.enumerated()), id: \.offset) { _, id in
+                        CollectionCardImageView(definitionID: id)
+                            .frame(width: 40, height: 40)
+                            .grayscale(1)
                     }
                 }
             }
