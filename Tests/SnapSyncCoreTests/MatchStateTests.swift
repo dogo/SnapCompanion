@@ -43,3 +43,20 @@ private func gameState(cube: Int, stakes: Int, resultItems: String?) -> Data {
     #expect(state?.result?.didWin == false)
     #expect(state?.result?.cubes == 2)
 }
+
+@Test func parsesRetreatAndBotFlags() {
+    // Shape captured from a real retreat: only our item, false flags omitted.
+    let mine = """
+    {"AccountId":"me-123","IsLoser":true,"Conceded":true,"FinalCubeValue":1,"CurrencyRewardEarned":-1}
+    """
+    let retreated = MatchState.parse(gameState(cube: 1, stakes: 0, resultItems: mine))?.result
+    #expect(retreated?.retreat == .you)
+    #expect(retreated?.vsBot == false)
+
+    let won = """
+    {"AccountId":"me-123","IsWinner":true,"OpponentConceded":true,"AiConfigDefId":"StandardAi"}
+    """
+    let result = MatchState.parse(gameState(cube: 2, stakes: 1, resultItems: won))?.result
+    #expect(result?.retreat == .opponent)
+    #expect(result?.vsBot == true)
+}

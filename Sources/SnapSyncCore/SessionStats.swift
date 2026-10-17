@@ -6,10 +6,32 @@ public struct DeckStat: Sendable, Equatable, Identifiable, Codable {
     public var games: Int
     public var wins: Int
     public var cubes: Int    // net cubes this session (won − lost)
+    public var retreats = 0           // games you retreated
+    public var opponentRetreats = 0   // games the opponent retreated
+    public var botGames = 0
 
     public var id: String { deck }
     public var losses: Int { games - wins }
     public var winRate: Double { games == 0 ? 0 : Double(wins) / Double(games) }
+
+    public init(deck: String, games: Int, wins: Int, cubes: Int) {
+        self.deck = deck
+        self.games = games
+        self.wins = wins
+        self.cubes = cubes
+    }
+
+    // Stats saved before retreat/bot tracking lack those keys; default them so history isn't dropped.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        deck = try c.decode(String.self, forKey: .deck)
+        games = try c.decode(Int.self, forKey: .games)
+        wins = try c.decode(Int.self, forKey: .wins)
+        cubes = try c.decode(Int.self, forKey: .cubes)
+        retreats = try c.decodeIfPresent(Int.self, forKey: .retreats) ?? 0
+        opponentRetreats = try c.decodeIfPresent(Int.self, forKey: .opponentRetreats) ?? 0
+        botGames = try c.decodeIfPresent(Int.self, forKey: .botGames) ?? 0
+    }
 }
 
 /// Aggregates finished-match results per deck. Persisted to a private JSON file
@@ -63,6 +85,9 @@ public struct SessionStats: Sendable, Equatable, Codable {
         stat.games += 1
         stat.wins += result.didWin ? 1 : 0
         stat.cubes += result.didWin ? result.cubes : -result.cubes
+        stat.retreats += result.retreat == .you ? 1 : 0
+        stat.opponentRetreats += result.retreat == .opponent ? 1 : 0
+        stat.botGames += result.vsBot ? 1 : 0
         byDeck[deck] = stat
         return true
     }
@@ -86,5 +111,8 @@ public struct SessionStats: Sendable, Equatable, Codable {
     public var totalGames: Int { byDeck.values.reduce(0) { $0 + $1.games } }
     public var totalWins: Int { byDeck.values.reduce(0) { $0 + $1.wins } }
     public var totalCubes: Int { byDeck.values.reduce(0) { $0 + $1.cubes } }
+    public var totalRetreats: Int { byDeck.values.reduce(0) { $0 + $1.retreats } }
+    public var totalOpponentRetreats: Int { byDeck.values.reduce(0) { $0 + $1.opponentRetreats } }
+    public var totalBotGames: Int { byDeck.values.reduce(0) { $0 + $1.botGames } }
     public var isEmpty: Bool { byDeck.isEmpty }
 }

@@ -80,3 +80,25 @@ import Testing
     #expect(result?.gameId == "abc-123")
     #expect(result?.didWin == true)
 }
+
+@Test func countsRetreatsAndBotGames() {
+    var stats = SessionStats()
+    stats.record(MatchResult(didWin: false, cubes: 1, deck: "Hela", gameId: "g1", retreat: .you))
+    stats.record(MatchResult(didWin: true, cubes: 2, deck: "Hela", gameId: "g2", retreat: .opponent, vsBot: true))
+    #expect(stats.totalRetreats == 1)
+    #expect(stats.totalOpponentRetreats == 1)
+    #expect(stats.totalBotGames == 1)
+}
+
+@Test func loadsStatsSavedBeforeRetreatTracking() throws {
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("deck-stats-\(UUID()).json")
+    defer { try? SessionStats.clear(at: url) }
+    try Data("""
+    {"byDeck":{"Hela":{"deck":"Hela","games":3,"wins":2,"cubes":5}},"seenGames":["a","b","c"]}
+    """.utf8).write(to: url)
+
+    let stats = SessionStats.load(from: url)
+    #expect(stats.totalGames == 3)
+    #expect(stats.totalRetreats == 0)
+}

@@ -56,6 +56,9 @@ struct SessionStatsView: View {
                             cubes(stats.totalCubes).bold()
                         }
                     }
+                    Text(.statsRetreatsAndBots(stats.totalRetreats, stats.totalOpponentRetreats, stats.totalBotGames))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(24)

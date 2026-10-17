@@ -55,11 +55,19 @@ public struct MatchState: Sendable, Equatable {
         guard let mine else { return nil }
         let cubes = message["FinalCubeValue"] as? Int ?? mine["FinalCubeValue"] as? Int ?? 0
         let deck = (mine["Deck"] as? [String: Any])?["Name"] as? String ?? ""
+        // False flags are omitted on the wire, so absence means "no".
+        let retreat: MatchResult.Retreat? = mine["Conceded"] as? Bool == true ? .you
+            : mine["OpponentConceded"] as? Bool == true ? .opponent : nil
+        // Only our own item is sent; an AI config on it is assumed to mean a bot opponent.
+        // shortcut: inferred from the schema, not yet seen in a bot match; drop if it misfires.
+        let vsBot = ["AiConfigDefId", "AiPlayDefId"].contains { (mine[$0] as? String).map { !$0.isEmpty } ?? false }
         return MatchResult(
             didWin: mine["IsWinner"] as? Bool ?? false,
             cubes: cubes,
             deck: deck,
-            gameId: message["GameId"] as? String ?? ""
+            gameId: message["GameId"] as? String ?? "",
+            retreat: retreat,
+            vsBot: vsBot
         )
     }
 
@@ -72,15 +80,22 @@ public struct MatchState: Sendable, Equatable {
 /// the sign is implied by `didWin` (won +cubes / lost −cubes). `gameId` identifies
 /// the match (used to record each result once); `deck` is the deck the player used.
 public struct MatchResult: Sendable, Equatable {
+    public enum Retreat: Sendable { case you, opponent }
+
     public let didWin: Bool
     public let cubes: Int
     public let deck: String
     public let gameId: String
+    public let retreat: Retreat?
+    public let vsBot: Bool
 
-    public init(didWin: Bool, cubes: Int, deck: String = "", gameId: String = "") {
+    public init(didWin: Bool, cubes: Int, deck: String = "", gameId: String = "",
+                retreat: Retreat? = nil, vsBot: Bool = false) {
         self.didWin = didWin
         self.cubes = cubes
         self.deck = deck
         self.gameId = gameId
+        self.retreat = retreat
+        self.vsBot = vsBot
     }
 }

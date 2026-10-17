@@ -34,6 +34,15 @@ struct MatchOverlayView: View {
                     Image(systemName: result.didWin ? "trophy.fill" : "xmark.seal.fill")
                     Text(result.didWin ? .overlayWon(result.cubes) : .overlayLost(result.cubes))
                         .font(.subheadline.bold())
+                    Spacer()
+                    if result.retreat == .you {
+                        Text(.overlayYouRetreated).font(.caption)
+                    } else if result.retreat == .opponent {
+                        Text(.overlayOpponentRetreated).font(.caption)
+                    }
+                    if result.vsBot {
+                        Image(systemName: "cpu").accessibilityLabel(Text(.overlayVsBot))
+                    }
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, alignment: .leading)
