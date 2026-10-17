@@ -35,6 +35,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var matchTotalTurns = 0
     @Published private(set) var matchCubeValue = 0
     @Published private(set) var matchSnaps = 0
+    @Published private(set) var youSnapped = false
+    @Published private(set) var opponentSnapped = false
     @Published private(set) var locations: [String] = []
     @Published private(set) var deckPredictions: [DeckPrediction] = []
     @Published private(set) var isOverlayVisible = false
@@ -82,7 +84,10 @@ final class AppModel: ObservableObject {
 
         do {
             guard let source = SnapSource.discover().first else {
-                throw SnapSyncError.sourceNotFound
+                // Usually macOS denying container access (per-app App Data consent); a picked folder bypasses it.
+                statusText = String(localized: .statusSourceNotFound)
+                hasError = true
+                return
             }
             try loadSource(at: source.url)
             showReady()
@@ -90,6 +95,32 @@ final class AppModel: ObservableObject {
         } catch {
             show(error)
         }
+    }
+
+    func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.message = String(localized: .folderPickerMessage)
+        panel.prompt = String(localized: .folderPickerPrompt)
+        panel.directoryURL = Self.likelySnapFolder
+        NSApp.activate(ignoringOtherApps: true)
+        if panel.runModal() == .OK, let url = panel.url {
+            selectFolder(url)
+        }
+    }
+
+    /// The game's nvprod folder, found by the container's bundle ID; falls back to ~/Library/Containers.
+    private static var likelySnapFolder: URL {
+        let containers = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers", isDirectory: true)
+        let snap = (try? FileManager.default.contentsOfDirectory(at: containers, includingPropertiesForKeys: nil))?
+            .first { container in
+                let metadata = NSDictionary(contentsOf: container.appendingPathComponent(".com.apple.containermanagerd.metadata.plist"))
+                return metadata?["MCMMetadataIdentifier"] as? String == "com.nvsgames.snap"
+            }
+        return snap?.appendingPathComponent("Data/Documents/Standalone/States/nvprod", isDirectory: true) ?? containers
     }
 
     func selectFolder(_ url: URL) {
@@ -339,6 +370,8 @@ final class AppModel: ObservableObject {
         matchTotalTurns = obj["totalTurns"] as? Int ?? 0
         matchCubeValue = obj["cubeValue"] as? Int ?? 0
         matchSnaps = obj["snaps"] as? Int ?? 0
+        youSnapped = obj["youSnapped"] as? Bool ?? false
+        opponentSnapped = obj["opponentSnapped"] as? Bool ?? false
         locations = obj["locations"] as? [String] ?? []
         let name = obj["opponentName"] as? String ?? ""
         if name != opponentName {
@@ -348,7 +381,9 @@ final class AppModel: ObservableObject {
         let cards = obj["opponentCards"] as? [String] ?? []
         guard cards != opponentCards else { return }
         opponentCards = cards
-        deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: cards, archetypes: archetypes)
+        // Predict only from cards that started in their deck; older proxy builds lack the key.
+        let deckCards = obj["opponentDeckCards"] as? [String] ?? cards
+        deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: deckCards, archetypes: archetypes)
     }
 
     private func loadArchetypes() {

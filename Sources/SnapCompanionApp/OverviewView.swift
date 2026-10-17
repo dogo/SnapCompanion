@@ -10,6 +10,14 @@ struct OverviewView: View {
             VStack(alignment: .leading, spacing: 18) {
                 SyncStatusCard(model: model)
 
+                if model.canConnect == false {
+                    Button(action: model.chooseFolder) {
+                        Label { Text(.chooseFolder) } icon: { Image(systemName: "folder.badge.gearshape") }
+                    }
+                    .controlSize(.large)
+                    .disabled(model.isSyncing || model.isConnecting)
+                }
+
                 LazyVGrid(columns: columns) {
                     MetricCard(
                         title: .metricCards,

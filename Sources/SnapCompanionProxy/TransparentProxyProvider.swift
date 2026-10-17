@@ -2,6 +2,7 @@ import Network
 import NetworkExtension
 import NIOSSL
 import os
+import SnapSyncCore
 
 /// A per-flow relay owned by the provider until it closes.
 protocol Relay: AnyObject, Sendable {

@@ -41,7 +41,7 @@ struct SettingsView: View {
 
                         Spacer()
 
-                        Button(action: chooseFolder) {
+                        Button(action: model.chooseFolder) {
                             Label {
                                 Text(model.canConnect ? .changeFolder : .chooseFolder)
                             } icon: {
@@ -67,17 +67,5 @@ struct SettingsView: View {
             .ignoresSafeArea()
         }
         .navigationTitle(Text(.sectionSettings))
-    }
-
-    private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.message = String(localized: .folderPickerMessage)
-        panel.prompt = String(localized: .folderPickerPrompt)
-        if panel.runModal() == .OK, let url = panel.url {
-            model.selectFolder(url)
-        }
     }
 }

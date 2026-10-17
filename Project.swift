@@ -80,6 +80,7 @@ let project = Project(
             sources: ["Sources/SnapCompanionProxy/*.swift"],
             entitlements: .file(path: "Packaging/SnapCompanionProxy.entitlements"),
             dependencies: [
+                .package(product: "SnapSyncCore"),
                 .package(product: "NIOCore"),
                 .package(product: "NIOSSL"),
                 .package(product: "NIOHTTP1"),

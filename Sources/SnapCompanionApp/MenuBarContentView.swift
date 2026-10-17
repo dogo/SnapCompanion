@@ -82,6 +82,12 @@ struct SyncCommands: View {
         }
         .keyboardShortcut("a", modifiers: [.command, .shift])
 
+        if model.canConnect == false {
+            Button(action: model.chooseFolder) {
+                Text(.chooseFolder)
+            }
+        }
+
         Button {
             model.toggleOverlay()
         } label: {

@@ -59,7 +59,15 @@ struct MatchOverlayView: View {
                 }
                 if model.matchSnaps > 0 {
                     Label {
-                        Text(.overlaySnaps(model.matchSnaps))
+                        if model.youSnapped && model.opponentSnapped {
+                            Text(.overlaySnapsBoth(model.matchSnaps))
+                        } else if model.opponentSnapped {
+                            Text(.overlaySnapsOpponent(model.matchSnaps))
+                        } else if model.youSnapped {
+                            Text(.overlaySnapsYou(model.matchSnaps))
+                        } else {
+                            Text(.overlaySnaps(model.matchSnaps))
+                        }
                     } icon: {
                         Image(systemName: "flame.fill")
                     }
@@ -118,10 +126,16 @@ struct MatchOverlayView: View {
                         }
                     }
                 }
+            } else if model.opponentCards.isEmpty == false {
+                Divider()
+                Text(.overlayNoMetaMatch)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(16)
         .frame(width: 400, alignment: .leading)
+        .background(WindowDragArea())
         .background(.ultraThinMaterial, in: .rect(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.12)))
     }
