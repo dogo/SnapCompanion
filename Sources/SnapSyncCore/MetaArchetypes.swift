@@ -53,6 +53,11 @@ public actor MetaArchetypes {
         }
     }
 
+    /// When the cached meta was last fetched; stale when MarvelSnap.pro can't be reached.
+    public func fetchedAt() -> Date? {
+        loadCache()?.fetchedAt
+    }
+
     private func request() throws -> URLRequest {
         guard let url = URL(string: "https://marvelsnap.pro/snap/do.php?cmd=getmeta") else {
             throw SnapSyncError.invalidResponse("meta URL is invalid")

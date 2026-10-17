@@ -78,8 +78,13 @@ struct MatchOverlayView: View {
 
             if model.locations.isEmpty == false {
                 HStack(spacing: 6) {
-                    ForEach(Array(model.locations.enumerated()), id: \.offset) { _, id in
-                        LocationImageView(definitionID: id, width: 108, height: 108)
+                    ForEach(Array(model.locations.enumerated()), id: \.offset) { index, id in
+                        VStack(spacing: 2) {
+                            LocationImageView(definitionID: id, width: 108, height: 108)
+                            if model.locationPowers.indices.contains(index) {
+                                powerLabel(model.locationPowers[index])
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -126,11 +131,21 @@ struct MatchOverlayView: View {
                         }
                     }
                 }
-            } else if model.opponentCards.isEmpty == false {
+            } else if model.opponentDeckCards.isEmpty == false {
                 Divider()
                 Text(.overlayNoMetaMatch)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            if let date = staleMetaDate, model.opponentDeckCards.isEmpty == false {
+                Label {
+                    Text(.overlayStaleMeta(date.formatted(date: .abbreviated, time: .omitted)))
+                } icon: {
+                    Image(systemName: "clock.badge.exclamationmark")
+                }
+                .font(.caption2)
+                .foregroundStyle(.orange)
             }
         }
         .padding(16)
@@ -138,6 +153,19 @@ struct MatchOverlayView: View {
         .background(WindowDragArea())
         .background(.ultraThinMaterial, in: .rect(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.12)))
+    }
+
+    /// "you – opponent", green when you're winning the location, red when losing.
+    private func powerLabel(_ power: [Int]) -> some View {
+        let (you, opponent) = (power.first ?? 0, power.last ?? 0)
+        return Text(verbatim: "\(you) – \(opponent)")
+            .font(.caption.bold()).monospacedDigit()
+            .foregroundStyle(you > opponent ? .green : you < opponent ? .red : .secondary)
+    }
+
+    /// Meta older than two days means MarvelSnap.pro refreshes have been failing.
+    private var staleMetaDate: Date? {
+        model.metaFetchedAt.flatMap { $0 < .now.addingTimeInterval(-2 * 86_400) ? $0 : nil }
     }
 
     private let columns = [GridItem(.adaptive(minimum: 62), spacing: 8)]

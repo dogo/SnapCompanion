@@ -38,6 +38,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var youSnapped = false
     @Published private(set) var opponentSnapped = false
     @Published private(set) var locations: [String] = []
+    @Published private(set) var locationPowers: [[Int]] = []
+    @Published private(set) var opponentDeckCards: [String] = []
+    @Published private(set) var metaFetchedAt: Date?
     @Published private(set) var deckPredictions: [DeckPrediction] = []
     @Published private(set) var isOverlayVisible = false
     private var archetypes: [MetaArchetype] = []
@@ -373,6 +376,7 @@ final class AppModel: ObservableObject {
         youSnapped = obj["youSnapped"] as? Bool ?? false
         opponentSnapped = obj["opponentSnapped"] as? Bool ?? false
         locations = obj["locations"] as? [String] ?? []
+        locationPowers = obj["locationPowers"] as? [[Int]] ?? []
         let name = obj["opponentName"] as? String ?? ""
         if name != opponentName {
             opponentName = name
@@ -383,6 +387,7 @@ final class AppModel: ObservableObject {
         opponentCards = cards
         // Predict only from cards that started in their deck; older proxy builds lack the key.
         let deckCards = obj["opponentDeckCards"] as? [String] ?? cards
+        opponentDeckCards = deckCards
         deckPredictions = archetypes.isEmpty ? [] : DeckPredictor.predict(revealed: deckCards, archetypes: archetypes)
     }
 
@@ -390,7 +395,11 @@ final class AppModel: ObservableObject {
         if archetypes.isEmpty {
             Task { [weak self] in
                 let loaded = (try? await MetaArchetypes.shared.archetypes()) ?? []
-                await MainActor.run { self?.archetypes = loaded }
+                let fetchedAt = await MetaArchetypes.shared.fetchedAt()
+                await MainActor.run {
+                    self?.archetypes = loaded
+                    self?.metaFetchedAt = fetchedAt
+                }
             }
         }
         if botIndex == nil {
