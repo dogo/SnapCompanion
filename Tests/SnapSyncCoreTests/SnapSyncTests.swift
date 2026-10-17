@@ -596,11 +596,7 @@ struct SnapSyncTests {
             .init(id: "ArnimZola", weight: 1), .init(id: "Knull", weight: 1), .init(id: "Wong", weight: 0.3),
         ])
 
-        // "Token" isn't in any archetype and must be dropped from matching.
-        let result = DeckPredictor.predict(
-            revealed: ["Wong", "Odin", "Ironheart", "Token"],
-            archetypes: [destroy, wongSurfer]
-        )
+        let result = DeckPredictor.predict(revealed: ["Wong", "Odin", "Ironheart"], archetypes: [destroy, wongSurfer])
 
         #expect(result.first?.archetype.name == "Wong Surfer")     // covers 3 vs 1
         #expect(result.first?.matched == ["Ironheart", "Odin", "Wong"])
@@ -610,6 +606,20 @@ struct SnapSyncTests {
         // One common card (Wong is in both archetypes) is less certain than three.
         let weak = DeckPredictor.predict(revealed: ["Wong"], archetypes: [destroy, wongSurfer])
         #expect((weak.first?.confidence ?? 1) < (result.first?.confidence ?? 0))
+    }
+
+    // Live match: an off-meta deck shared only Phastos with "Move Carnage", which was then shown at 100%.
+    @Test func deckPredictorRejectsArchetypesThatExplainFewRevealedCards() {
+        let moveCarnage = MetaArchetype(name: "Move Carnage", supertype: "Move", decksCount: 3, cards: [
+            .init(id: "Phastos", weight: 0.4), .init(id: "Carnage", weight: 1), .init(id: "Vulture", weight: 1),
+        ])
+        let revealed = ["AdamWarlock", "Surge", "Hulkbuster", "Phastos", "Zabu",
+                        "ShangChiMasterOfTheRings", "JubileeSilverSurfer", "SebastianShaw", "Agony", "Tarantula"]
+        #expect(DeckPredictor.predict(revealed: revealed, archetypes: [moveCarnage]).isEmpty)
+
+        // Half explained still predicts, but the unexplained half lowers confidence.
+        let partial = DeckPredictor.predict(revealed: ["Phastos", "Carnage", "Zabu", "Surge"], archetypes: [moveCarnage])
+        #expect(partial.first?.confidence == 0.5)
     }
 
     @Test func deckRecommendationsRankOwnedCardsAndKeepMissingCards() throws {
