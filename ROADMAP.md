@@ -221,6 +221,15 @@ Criteria:
 - Shared `SyncCommands` view backs both the menu bar and the window commands. ✅
 - Bundle promoted to `1.4.1`, signed and notarized.
 
+### 1.5.0 — Live match overlay from the game's WebSocket ✅
+
+- Live power per location, opponent hand/deck size, revealed graveyard, rank and collection level, and who snapped. ✅
+- Match result, retreats and bot opponents read live from the WebSocket, not only `GameState.json`. ✅
+- Deck identity preserved across Morph and ownership changes; generated cards excluded from prediction. ✅
+- Hidden opponent cards inferred from the creators of generated cards (e.g. Shang-Chi's Ten Rings), shown as "In deck, not yet seen". ✅
+- Deck prediction no longer claims an archetype that explains few of the revealed cards. ✅
+- Bundle promoted to `1.5.0`, signed and notarized.
+
 ## Next step
 
 Gather usage before deciding on time-series history or multiple destinations.
