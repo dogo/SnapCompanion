@@ -52,7 +52,9 @@ public final class MatchTracker {
     private var players: [Int: (account: String?, name: String)] = [:]
     private var profiles: [Int: (rank: Int?, collection: Int?)] = [:]  // player entityId -> public profile numbers
     private var cardOwner: [Int: Int] = [:]      // card entityId -> owner (player) entityId
+    private var cardDeckOwner: [Int: Int] = [:]  // original deck owner, unchanged by transfers
     private var revealed: [Int: String] = [:]    // card entityId -> CardDefId
+    private var deckRevealed: [Int: String] = [:] // first known original identity, retained after transformation
     private var generated: Set<Int> = []         // card entityIds created mid-match by a card/location/effect
     private var snappers: Set<Int> = []          // player entityIds that raised the stakes
     private var zones: [Int: (deck: Int, hand: Int, graveyard: Int)] = [:]  // player entityId -> zone entityIds
@@ -92,6 +94,7 @@ public final class MatchTracker {
             } else if type.contains("GameCreateCardChange") {
                 if let id = change["EntityId"] as? Int, let owner = change["OwnerEntityId"] as? Int {
                     cardOwner[id] = owner
+                    if cardDeckOwner[id] == nil { cardDeckOwner[id] = owner }
                 }
                 if let id = change["EntityId"] as? Int, let zone = change["ZoneEntityId"] as? Int {
                     cardZone[id] = zone
@@ -100,13 +103,26 @@ public final class MatchTracker {
                 if let id = change["CardEntityId"] as? Int, let zone = change["TargetZoneEntityId"] as? Int {
                     cardZone[id] = zone
                 }
-            } else if type.contains("GameRevealCardChange") {
+                if let id = change["CardEntityId"] as? Int, let owner = change["CardOwnerEntityId"] as? Int {
+                    cardOwner[id] = owner
+                }
+            } else if type.contains("CardOwnerChange") {
+                if let id = change["CardEntityId"] as? Int, let owner = change["CardOwnerEntityId"] as? Int {
+                    cardOwner[id] = owner
+                }
+            } else if type.contains("GameRevealCardChange") || type.contains("CardMorphChange") {
                 if let id = change["EntityId"] as? Int, let def = change["CardDefId"] as? String {
                     revealed[id] = def
-                    // Created* is null for cards that started in the deck (field names from IL2CPP metadata).
+                    if let deck = change["StartedInDeckEntityId"] as? Int,
+                       let owner = zones.first(where: { $0.value.deck == deck })?.key {
+                        cardDeckOwner[id] = owner
+                    }
+                    // Live captures omit Created* for originals and include it for generated cards.
                     let creators = ["CreatedByCardDefId", "CreatedByLocationDefId", "CreatedByFactionDefId"]
                     if creators.contains(where: { (change[$0] as? String).map { !$0.isEmpty && $0 != "None" } ?? false }) {
                         generated.insert(id)
+                    } else if !generated.contains(id), deckRevealed[id] == nil {
+                        deckRevealed[id] = def
                     }
                 }
             } else if type.contains("GameDestroyLocationChange") {
@@ -177,6 +193,7 @@ public final class MatchTracker {
 
     private func reset() {
         players.removeAll(); profiles.removeAll(); cardOwner.removeAll(); revealed.removeAll(); generated.removeAll()
+        deckRevealed.removeAll(); cardDeckOwner.removeAll()
         snappers.removeAll(); zones.removeAll(); cardZone.removeAll()
         locations.removeAll(); powers.removeAll(); iAmPlayer1 = nil
         cubeValue = 0
@@ -199,8 +216,10 @@ public final class MatchTracker {
         guard let opponent = opponentEntity else { return [] }
         var seen = Set<String>()
         var cards: [String] = []
-        for (id, def) in revealed.sorted(by: { $0.key < $1.key })
-            where cardOwner[id] == opponent && !(excludingGenerated && generated.contains(id)) && seen.insert(def).inserted {
+        let known = excludingGenerated ? deckRevealed : revealed
+        let owners = excludingGenerated ? cardDeckOwner : cardOwner
+        for (id, def) in known.sorted(by: { $0.key < $1.key })
+            where owners[id] == opponent && seen.insert(def).inserted {
             cards.append(def)
         }
         return cards

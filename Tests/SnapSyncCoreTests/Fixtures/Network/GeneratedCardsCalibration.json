@@ -1,0 +1,115 @@
+{
+  "sourceSHA256": "eb695d7fa28ffd018c42a59fa9980bb4af12f5c0a7bac78d83725f0b39b50ed4",
+  "sourceRecordLines": [
+    12,
+    13,
+    15,
+    46,
+    118
+  ],
+  "messages": [
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameCreateChange, SecondDinner.CubeGame",
+          "StartingCubeValue": 1,
+          "TotalTurns": 6
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.ChangeNotification, SecondDinner.CubeGame",
+      "AccountId": "account-2"
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameCreatePlayerChange, SecondDinner.CubeGame",
+          "EntityId": 2,
+          "DeckEntityId": 3,
+          "HandEntityId": 4,
+          "GraveyardEntityId": 5,
+          "PlayerInfo": {
+            "AccountId": "account-1"
+          }
+        },
+        {
+          "$type": "CubeGame.GameCreatePlayerChange, SecondDinner.CubeGame",
+          "EntityId": 7,
+          "DeckEntityId": 8,
+          "HandEntityId": 9,
+          "GraveyardEntityId": 10,
+          "PlayerInfo": {
+            "AccountId": "account-2"
+          }
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 20,
+          "OwnerEntityId": 2,
+          "ZoneEntityId": 3
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 25,
+          "OwnerEntityId": 2,
+          "ZoneEntityId": 3
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 25,
+          "CardDefId": "MrNegative",
+          "StartedInDeckEntityId": 3
+        },
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 25,
+          "CardDefId": "MrNegative",
+          "StartedInDeckEntityId": 3
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 20,
+          "CardDefId": "WhiteTiger",
+          "StartedInDeckEntityId": 3
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 57,
+          "OwnerEntityId": 2,
+          "ZoneEntityId": 13
+        },
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 57,
+          "CardDefId": "TigerSpirit",
+          "CreatedByCardDefId": "WhiteTiger"
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 58,
+          "OwnerEntityId": 2,
+          "ZoneEntityId": 14
+        },
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 58,
+          "CardDefId": "TigerSpirit",
+          "CreatedByCardDefId": "WhiteTiger"
+        }
+      ]
+    }
+  ]
+}

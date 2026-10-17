@@ -33,6 +33,77 @@ private let setup = """
     #expect(snapshot.opponentDeckCards == ["Mobius"])
 }
 
+@Test func excludesWhiteTigerTokensFromCapturedMatchDeck() throws {
+    let url = try #require(Bundle.module.url(forResource: "GeneratedCardsCalibration", withExtension: "json", subdirectory: "Fixtures/Network"))
+    let fixture = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    let messages = try #require(fixture["messages"] as? [[String: Any]])
+    let tracker = MatchTracker()
+    var snapshot: MatchSnapshot?
+    for message in messages {
+        snapshot = tracker.process(try JSONSerialization.data(withJSONObject: message))
+    }
+    let result = try #require(snapshot)
+    #expect(result.opponentCards == ["WhiteTiger", "MrNegative", "TigerSpirit"])
+    #expect(result.opponentDeckCards == ["WhiteTiger", "MrNegative"])
+}
+
+@Test func tracksCapturedMorphWithoutLosingItsOriginalDeckIdentity() throws {
+    let url = try #require(Bundle.module.url(forResource: "MorphCalibration", withExtension: "json", subdirectory: "Fixtures/Network"))
+    let fixture = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    let messages = try #require(fixture["messages"] as? [[String: Any]])
+    let tracker = MatchTracker()
+    var snapshot: MatchSnapshot?
+    for (index, original) in messages.enumerated() {
+        var message = original
+        // The captured Morph was ours; replay the other account's viewpoint to exercise the opponent overlay.
+        if message["AccountId"] != nil { message["AccountId"] = "account-1" }
+        snapshot = tracker.process(try JSONSerialization.data(withJSONObject: message))
+        if index >= 3 {
+            let result = try #require(snapshot)
+            #expect(result.opponentCards == ["Venus"])
+            #expect(result.opponentDeckCards == ["Morph"])
+        }
+    }
+    let reset = try #require(tracker.process(message(setup)))
+    #expect(reset.opponentDeckCards.isEmpty)
+}
+
+@Test(arguments: ["account-2", "account-1"])
+func tracksCapturedGoblinTransfersWithoutChangingDeckOrigin(account: String) throws {
+    let url = try #require(Bundle.module.url(forResource: "OwnerTransferCalibration", withExtension: "json", subdirectory: "Fixtures/Network"))
+    let fixture = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    let messages = try #require(fixture["messages"] as? [[String: Any]])
+    let tracker = MatchTracker()
+    for (index, original) in messages.enumerated() {
+        var payload = original
+        // Both goblins were ours; also replay the other viewpoint to check cards leaving the opponent.
+        if payload["AccountId"] != nil { payload["AccountId"] = account }
+        let result = try #require(tracker.process(try JSONSerialization.data(withJSONObject: payload)))
+        if index >= 3 {
+            #expect(result.opponentDeckCards == (account == "account-2" ? [] : ["GreenGoblin", "Hobgoblin"]))
+            let current = index == 3 ? [] : index == 4 ? ["Hobgoblin"] : ["GreenGoblin", "Hobgoblin"]
+            let remaining = index == 3 ? ["GreenGoblin", "Hobgoblin"] : index == 4 ? ["GreenGoblin"] : []
+            #expect(result.opponentCards == (account == "account-2" ? current : remaining))
+        }
+    }
+    let reset = try #require(tracker.process(message(setup)))
+    #expect(reset.opponentCards.isEmpty)
+    #expect(reset.opponentDeckCards.isEmpty)
+}
+
+@Test func usesExplicitDeckOriginWhenCardIsFirstSeenAfterTransfer() throws {
+    let tracker = MatchTracker()
+    let result = try #require(tracker.process(message("""
+    {"$type":"GameCreateChange"},
+    {"$type":"GameCreatePlayerChange","EntityId":1,"DeckEntityId":8,"PlayerInfo":{"AccountId":"me-123"}},
+    {"$type":"GameCreatePlayerChange","EntityId":2,"DeckEntityId":3,"PlayerInfo":{"AccountId":"opp-999"}},
+    {"$type":"GameCreateCardChange","EntityId":29,"OwnerEntityId":2,"ZoneEntityId":13},
+    {"$type":"GameRevealCardChange","EntityId":29,"CardDefId":"GreenGoblin","StartedInDeckEntityId":8}
+    """)))
+    #expect(result.opponentCards == ["GreenGoblin"])
+    #expect(result.opponentDeckCards.isEmpty)
+}
+
 @Test func recordsWhoSnapped() throws {
     let tracker = MatchTracker()
     _ = tracker.process(message(setup))

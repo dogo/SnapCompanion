@@ -5,6 +5,7 @@ import NIOCore
 import NIOEmbedded
 import NIOSSL
 import os
+import SnapSyncCore
 
 /// TLS man-in-the-middle for a single intercepted flow. Terminates the game's
 /// TLS with our leaf (NIOSSL driven over the flow's byte stream via an
@@ -24,11 +25,13 @@ final class FlowMITM: Relay, @unchecked Sendable {
     private let onClose: () -> Void
     private let initial: Data
     private let wsParser = WebSocketFrameParser()
+    private let clientWSParser = WebSocketFrameParser()
     private var clientReady = false
     private var pendingToServer: [Data] = []
 
     init?(flow: NEAppProxyTCPFlow, host: String, port: UInt16, initial: Data,
           context: NIOSSLContext, log: Logger,
+          onClientMessage: @escaping (Data) -> Void,
           onServerMessage: @escaping (Data) -> Void,
           onClose: @escaping () -> Void) {
         self.flow = flow
@@ -36,6 +39,7 @@ final class FlowMITM: Relay, @unchecked Sendable {
         self.initial = initial
         self.onClose = onClose
         self.wsParser.onMessage = onServerMessage
+        self.clientWSParser.onMessage = onClientMessage
         self.capture = CaptureHandler()
         self.channel = EmbeddedChannel()
         do {
@@ -102,6 +106,7 @@ final class FlowMITM: Relay, @unchecked Sendable {
 
     // Decrypted game request → real server.
     private func gameToServer(_ data: Data) {
+        clientWSParser.feed(data)
         guard clientReady else { pendingToServer.append(data); return }
         client.send(content: data, completion: .contentProcessed { _ in })
     }

@@ -30,6 +30,12 @@ final class ProxyController: NSObject, ObservableObject, @unchecked Sendable {
             let proto = NETunnelProviderProtocol()
             proto.providerBundleIdentifier = Self.extensionBundleId
             proto.serverAddress = "127.0.0.1"
+            if ProcessInfo.processInfo.arguments.contains("--capture-network") {
+                proto.providerConfiguration = [
+                    "networkCaptureExpiresAt": Date().addingTimeInterval(900).timeIntervalSince1970,
+                    "networkCaptureOwnerID": Int(getuid()),
+                ]
+            }
             manager.protocolConfiguration = proto
             manager.localizedDescription = "SnapCompanion Proxy"
             manager.isEnabled = true

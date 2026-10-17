@@ -1,0 +1,116 @@
+{
+  "sourceSHA256": "db6892847ec2ace553617cd10c6ba89fa344682c21591ca3947d2df2377df6c7",
+  "sourceRecordLines": [
+    11,
+    12,
+    14,
+    41,
+    86
+  ],
+  "messages": [
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameCreateChange, SecondDinner.CubeGame",
+          "StartingCubeValue": 1,
+          "TotalTurns": 6
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.ChangeNotification, SecondDinner.CubeGame",
+      "AccountId": "account-2"
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameCreatePlayerChange, SecondDinner.CubeGame",
+          "EntityId": 2,
+          "DeckEntityId": 3,
+          "HandEntityId": 4,
+          "GraveyardEntityId": 5,
+          "PlayerInfo": {
+            "AccountId": "account-1"
+          }
+        },
+        {
+          "$type": "CubeGame.GameCreatePlayerChange, SecondDinner.CubeGame",
+          "EntityId": 7,
+          "DeckEntityId": 8,
+          "HandEntityId": 9,
+          "GraveyardEntityId": 10,
+          "PlayerInfo": {
+            "AccountId": "account-2"
+          }
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 37,
+          "OwnerEntityId": 7,
+          "ZoneEntityId": 8
+        },
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 37,
+          "CardDefId": "Morph",
+          "StartedInDeckEntityId": 8,
+          "ReferenceCards": []
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.CardMorphChange, SecondDinner.CubeGame",
+          "EntityId": 37,
+          "CardDefId": "Venus",
+          "StartedInDeckEntityId": 8,
+          "CreatedByCardDefId": "Morph",
+          "ReferenceCards": []
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 48,
+          "OwnerEntityId": 7,
+          "ZoneEntityId": 15
+        },
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 48,
+          "CardDefId": "Venus",
+          "CreatedByLocationDefId": "SinisterLondon",
+          "ReferenceCards": [
+            {
+              "$type": "<string>",
+              "AbilityTextCardDefId": "<string>",
+              "CardDefId": "Morph",
+              "RarityDefId": "<string>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 37,
+          "CardDefId": "Venus",
+          "CreatedByCardDefId": "Morph",
+          "ReferenceCards": [
+            {
+              "$type": "<string>",
+              "AbilityTextCardDefId": "<string>",
+              "CardDefId": "Morph",
+              "RarityDefId": "<string>"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

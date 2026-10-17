@@ -1,0 +1,127 @@
+{
+  "sourceSHA256": "1604a66e743465674119624f1605f78fa710b0f7a127bca2722efe592d03e0db",
+  "sourceRecordLines": [
+    11,
+    12,
+    14,
+    46,
+    55,
+    70
+  ],
+  "messages": [
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameCreateChange, SecondDinner.CubeGame",
+          "StartingCubeValue": 1
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.ChangeNotification, SecondDinner.CubeGame",
+      "AccountId": "account-2"
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameCreatePlayerChange, SecondDinner.CubeGame",
+          "EntityId": 2,
+          "DeckEntityId": 3,
+          "HandEntityId": 4,
+          "GraveyardEntityId": 5,
+          "PlayerInfo": {
+            "AccountId": "account-1"
+          }
+        },
+        {
+          "$type": "CubeGame.GameCreatePlayerChange, SecondDinner.CubeGame",
+          "EntityId": 7,
+          "DeckEntityId": 8,
+          "HandEntityId": 9,
+          "GraveyardEntityId": 10,
+          "PlayerInfo": {
+            "AccountId": "account-2"
+          }
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 29,
+          "OwnerEntityId": 7,
+          "ZoneEntityId": 8
+        },
+        {
+          "$type": "CubeGame.GameCreateCardChange, SecondDinner.CubeGame",
+          "EntityId": 33,
+          "OwnerEntityId": 7,
+          "ZoneEntityId": 8
+        },
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 29,
+          "CardDefId": "GreenGoblin",
+          "StartedInDeckEntityId": 8
+        },
+        {
+          "$type": "CubeGame.CardMoveChange, SecondDinner.CubeGame",
+          "CardEntityId": 29,
+          "CardOwnerEntityId": 7,
+          "TargetZoneEntityId": 9
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.GameRevealCardChange, SecondDinner.CubeGame",
+          "EntityId": 33,
+          "CardDefId": "Hobgoblin",
+          "StartedInDeckEntityId": 8
+        },
+        {
+          "$type": "CubeGame.CardMoveChange, SecondDinner.CubeGame",
+          "CardEntityId": 33,
+          "CardOwnerEntityId": 7,
+          "TargetZoneEntityId": 9
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.CardMoveChange, SecondDinner.CubeGame",
+          "CardEntityId": 33,
+          "CardOwnerEntityId": 7,
+          "TargetZoneEntityId": 13
+        },
+        {
+          "$type": "CubeGame.CardOwnerChange, SecondDinner.CubeGame",
+          "CardEntityId": 33,
+          "CardOwnerEntityId": 2,
+          "LocationEntityId": 13
+        }
+      ]
+    },
+    {
+      "$type": "CubeGame.GetChangesResponse, SecondDinner.CubeGame",
+      "Changes": [
+        {
+          "$type": "CubeGame.CardMoveChange, SecondDinner.CubeGame",
+          "CardEntityId": 29,
+          "CardOwnerEntityId": 7,
+          "TargetZoneEntityId": 13
+        },
+        {
+          "$type": "CubeGame.CardOwnerChange, SecondDinner.CubeGame",
+          "CardEntityId": 29,
+          "CardOwnerEntityId": 2,
+          "LocationEntityId": 13,
+          "CardZonePosition": 2
+        }
+      ]
+    }
+  ]
+}

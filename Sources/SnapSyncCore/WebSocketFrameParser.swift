@@ -1,15 +1,16 @@
 import Foundation
 
-/// Extracts WebSocket message payloads from a server → client byte stream:
-/// skips the HTTP 101 upgrade response, then parses frames (server frames are
-/// unmasked) and reassembles fragments. Control frames are ignored.
-final class WebSocketFrameParser {
+/// Skips HTTP upgrade headers, then extracts masked or unmasked WebSocket messages.
+/// Reassembles fragments and ignores control frames in either direction.
+public final class WebSocketFrameParser {
     private var buffer = Data()
     private var upgraded = false
     private var fragment = Data()
-    var onMessage: ((Data) -> Void)?
+    public var onMessage: ((Data) -> Void)?
 
-    func feed(_ data: Data) {
+    public init() {}
+
+    public func feed(_ data: Data) {
         buffer.append(data)
         if !upgraded {
             guard let range = buffer.range(of: Data("\r\n\r\n".utf8)) else { return }

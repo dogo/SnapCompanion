@@ -20,9 +20,25 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
     private let tracker = MatchTracker()
     private let trackerLock = NSLock()
     private var lastSnapshot: MatchSnapshot?
+    private var networkCapture: NetworkMessageCapture?
     static let liveMatchPath = "/tmp/snapcompanion-live-match.json"
 
     override func startProxy(options: [String: Any]?, completionHandler: @escaping (Error?) -> Void) {
+        if let expires = (protocolConfiguration as? NETunnelProviderProtocol)?
+            .providerConfiguration?["networkCaptureExpiresAt"] as? Double,
+            let owner = (protocolConfiguration as? NETunnelProviderProtocol)?
+            .providerConfiguration?["networkCaptureOwnerID"] as? Int,
+            let ownerID = UInt32(exactly: owner), ownerID > 0,
+            expires > Date().timeIntervalSince1970, expires <= Date().timeIntervalSince1970 + 900 {
+            do {
+                let directory = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+                    .appendingPathComponent("snapcompanion-network-\(UUID().uuidString)")
+                networkCapture = try NetworkMessageCapture(directory: directory, expiresAt: Date(timeIntervalSince1970: expires), ownerID: ownerID)
+                log.info("network capture: \(directory.path, privacy: .public) (15 min / 8 MiB, game values allowlisted, accounts aliased)")
+            } catch {
+                log.error("network capture unavailable: \(error.localizedDescription, privacy: .public)")
+            }
+        }
         let settings = NETransparentProxyNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
         // Match outbound TCP to port 443 (all TLS, including the game WebSocket).
         // A fully-wildcard rule (0.0.0.0:0) is rejected — a non-wildcard port or
@@ -65,9 +81,15 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
                 // certificate-pinned: MITMing it triggers a reconnect storm.
                 if sni.contains("-ws-cf.nvprod.snapgametech.com"), let context = self.serverContext {
                     self.log.info("MITM \(sni, privacy: .public)")
+                    let connection = UUID().uuidString
+                    let capture = self.networkCapture
                     self.retain(FlowMITM(
                         flow: tcp, host: sni, port: 443, initial: data, context: context, log: self.log,
-                        onServerMessage: { [weak self] msg in self?.observe(msg) },
+                        onClientMessage: { capture?.record($0, direction: "client-to-server", connection: connection) },
+                        onServerMessage: { [weak self] msg in
+                            capture?.record(msg, direction: "server-to-client", connection: connection)
+                            self?.observe(msg)
+                        },
                         onClose: { [weak self] in self?.prune() }
                     ))
                 } else {
@@ -100,5 +122,10 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
 
     private func prune() {
         lock.withLock { retained = retained.filter { $0.value.isOpen } }
+    }
+
+    override func stopProxy(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
+        networkCapture?.finish()
+        completionHandler()
     }
 }

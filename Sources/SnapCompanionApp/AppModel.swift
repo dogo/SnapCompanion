@@ -79,6 +79,7 @@ final class AppModel: ObservableObject {
         proxyObservation = proxy.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }
+        if ProcessInfo.processInfo.arguments.contains("--capture-network") { proxy.activate() }
     }
 
     func load() {
