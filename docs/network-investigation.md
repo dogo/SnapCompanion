@@ -658,3 +658,102 @@ Extension 49 was installed and activated, and the app was signed with the same i
 - **Hobgoblin**, entity 32, started in deck 8, the local player 7. It appeared in opponentCards but correctly stayed out of the opponent's deck lists. TenRings later morphed into TenRingsUpgrade (change 79) and was not counted as a deck card.
 
 The match produced no false attribution. One match does not measure the misattribution risk noted in the code shortcut.
+
+## Linux/Proton capture — October 18, 2026
+
+The Windows build (Steam app 1997040) runs under Proton Experimental on CachyOS, kernel 7.2. This section records a capture of that client with mitmproxy instead of the macOS system extension. The game and its files were not modified.
+
+### Setup
+
+- **Interception:** mitmproxy 12.2.3 (pipx) in local capture mode, which uses an eBPF `cgroup_sock_create` hook and a `tun0` device. The redirector logs `object BTF couldn't be loaded` on this kernel; the warning is non-fatal and redirection works.
+- **Process selection:** Wine creates sockets in **wineserver**, not in the game process (`ss` lists each socket under both `SNAP.exe` and `wineserver`). Targeting only the SNAP.exe PID redirected the game's DNS lookups but no TCP/443 connections. Selecting both PIDs (`--mode local:<SNAP.exe>,<wineserver>`) redirected the game's TLS connections. Pressure-vessel shares the host network namespace, so no namespace work was needed.
+- **Scope:** `--allow-hosts='-ws-cf\.nvprod\.snapgametech\.com'` mirrors the macOS SNI check: only the WebSocket hosts are decrypted, and everything else is passed through.
+- **Trust:** the mitmproxy CA was added to the host store with `trust anchor`. `scripts/linux_capture.sh` now adds it on start and removes it on exit, so it is trusted only while capturing. Unity under Wine accepted it, with no handshake errors in `Player.log` or mitmproxy. As on macOS, the game WebSocket is not certificate-pinned.
+- **Recording:** `scripts/mitm_capture.py` ports `NetworkMessageCapture` (captureFormat 3, same allowlists, aliasing, limits, and direction labels). Output now goes to `.build/captures/` and is owned by the invoking user.
+- **Superseded — loopback breakage:** the eBPF redirector also captures loopback connects. Unity's Windows curl builds a TCP `127.0.0.1` socketpair for each threaded DNS lookup, and those redirected connects fail. With capture active at game start, loading stalled at the resource-update check with `Curl error 6: getaddrinfo() thread failed to start` in `Player.log`. This is a capture artifact, not certificate pinning. Mid-session captures mostly worked only because lookups were already cached. Capture now uses `scripts/linux_capture.sh`: Steam launches the game in `snapcap.slice` (`systemd-run --user --slice=snapcap.slice --scope … %command%`), and an nftables `socket cgroupv2` rule redirects only that cgroup's non-loopback TCP/443 to mitmproxy in transparent mode. Only IPv4 is redirected: with IPv6 also redirected, the Apple login's Firebase call (`identitytoolkit.googleapis.com`, reached over IPv6) failed with a socket error and login ended in `AccountAuthFail`. The game hosts observed so far are IPv4. `stream_large_bodies=1m` keeps asset downloads from being buffered. The OAuth flow itself (`account/oauth/getIdToken` polling until the browser completes) works through the proxy; `OAuthStateDoesNotExistError` is the normal response while it waits.
+- **Side effects:** the redirector also redirected some non-game traffic, including NetworkManager's connectivity check to `[2a01:4f9:c010:2636::1]:80`, mDNS/LLMNR/SSDP, and several `127.0.0.1` connections that then failed with ECONNREFUSED. The game played normally.
+
+### Match captured — 12:53:07 to 12:56:30 local
+
+This was one normal match on `wss://us-east-1-ws-cf…/v57.17-6-game`, preceded by the `v57.17-6-matchmaker` exchange. It produced 107 messages over 199 s. mitmdump reloaded the addon when the script was edited mid-match (12:53:31 → 12:53:37), which split the capture into two files. No game message was observed in that gap, but this was not verified frame by frame. **Both raw files were later deleted by mistake during a test cleanup; only the analysis below remains.**
+
+- **Players:** player 2 / deck 3 is the local account (`account-1`, the recipient of every `ChangeNotification`), and player 7 / deck 8 is the opponent.
+- **Change families:** the families seen on macOS (create, reveal, move, energy, initiative, staging, turns, locations, VFX), plus `CardCostChange`, `CardPowerChange`, `CardStatUpdatesChange`, `CardTextRemovedChange`, `LocationStatUpdatesChange`, `LocationPowerTotalsChange`, `GameRaiseStakesForNextTurnChange`, `GameStakesRaisedChange`, `GameFinalTurnChange`, `GameTotalTurnsChange`, `GamePreventConcedingByPlayersChange`, `CardRevealedChange`, `AddCardStagedChange`/`RemoveCardStagedChange`, and `CardStageResolvedChange`. These confirm in transit several names that the first section listed as still requiring payload confirmation.
+- **Opponent reveals:** Marrow, Headpool, ArnimZola, MoiraX, Carnage, Magik, and Venom, each with `StartedInDeckEntityId` 8. Two generated Knull (entities 49 and 50) carried `CreatedByCardDefId: ArnimZola`. ArnimZola was itself revealed, so this is not a hidden-creator inference case.
+- **Result:** a single `GameResultChange` with **one** `GameResultAccountItems` entry, the local account's (`IsWinner: true`, `FinalCubeValue: 4`, `AllTurnsPlayed: true`, and `CardDefIdsDrawn`/`CardDefIdsPlayed` for the local deck only). This matches the macOS finding that the client's result carries only its own deck.
+
+The Windows client follows the same protocol and visibility boundary as the macOS client in this match: entities first, and identities only through reveals.
+
+### Next experiments enabled by Linux
+
+1. **HTTP API pinning on Windows.** On macOS the HTTP/2 API is pinned and was left untouched. Run `scripts/linux_capture.sh 'nvprod\.snapgametech\.com'` before launching the game, so that the API connections are new. A first attempt with eBPF local mode was inconclusive because of the loopback breakage above. If `RpcManager|AfterSendWebRequest` keeps returning `HttpCode=200`, the Windows build does not pin the API, and the addon records sanitized request/response shapes (paths under `/account/` are skipped because they carry the session JWT). This would allow the Draft `GamePlayedData.OpponentDeck` experiment live, instead of relying on response caches.
+2. **Binary frames.** The addon now records non-text WebSocket frames as `"binary": true` lines with size only. This answers the earlier open question of whether binary frames ever appear on the wire.
+3. **Static analysis on x86-64.** `GameAssembly.dll` plus `SNAP_Data/il2cpp_data/Metadata/global-metadata.dat` can be processed with Il2CppDumper/Cpp2IL and then Ghidra. This is the method-body decompilation that timed out with Hopper on the ARM64 framework.
+
+### HTTP API is not pinned in the Windows build — October 18, 2026
+
+With `scripts/linux_capture.sh 'nvprod\.snapgametech\.com'` active before launch, the full startup sequence ran through mitmproxy. That covered Apple login, `servicediscovery`, `ingest`, `game/getActiveGame`, and 25+ `progression/*` endpoints (`profile/init`, `collection/init`, `battlePass/init`, `conquest/init`, `mission/init`, `shop/init`, `schema/executeMigration`, `facade/syncCommand`, `chat/getSecurityToken`, …). All returned 200/204/304, and the game reached the main menu. Across 74 requests the median `Took` was 0.27 s and the maximum 0.87 s. **Unlike the iOS/macOS build, the Windows client does not pin the HTTP API**, so API responses can be observed live instead of through the URL cache.
+
+Sanitization held. `/account/*` bodies were not recorded, `SecurityToken` was redacted, and the capture contains no JWT (`eyJ`) strings. The Firebase identity call goes over IPv6 and is outside the capture by design.
+
+Immediate use: the Draft experiment above (`GamePlayedData.OpponentDeck` while a run is active) can now be observed directly in the progression responses after a Draft game, subject to the sanitizer's value allowlist. `OpponentDeckCard.Card` is not on that allowlist, so its value would be masked unless `Card` turns out to be an object with a `CardDefId` field; this has not been checked.
+
+### Normal match with API visible — October 18, 2026
+
+This was one normal match with the WebSocket and the HTTP API captured together. The game stream had 109 messages and **zero binary frames**, which answers the earlier binary-frame question for this match. The local player was player 7 / deck 8 and the opponent player 2 / deck 3. The opponent's revealed cards all carried `StartedInDeckEntityId` 3. `GameResultChange` again had a single item, the local one.
+
+Post-game HTTP calls: `progression/gameResult/getResultsOfGame` (29 KB), `profile/getState`, `clan/getClan`, `shop/checkForConditionalBundleTriggers`, `news/getNews`, and `game/getActiveGame`. The `getResultsOfGame` body is `GameResultFound`, `Timestamp`, and `_changeMessageList`. That list holds progression deltas for the local account only: `Account` (wins/losses/snaps/concedes/`OpponentConcedes` counters and per-card `CardStats`), `Wallet`, `RankLog`, `State` milestones, `Log.Progress.LastAppliedGameId`, and `MatchPunchCardRewardProgress`. **No opponent deck, card list, or opponent identity field is present**, which confirms live what the static `CubePostGame.GameResultResponse` analysis above concluded for normal play.
+
+Sanitizer note: API objects use `Cube.*` namespaces, which the `$type` allowlist (`CubeGame.`/`CubeMatchmaker.` or a `…Change/Request/Response/Notification` suffix) masks to `<string>`. Field names are enough to identify the structures, but extending the allowlist to `Cube\.` would make API captures self-describing.
+
+## Static analysis of the Windows x86-64 build — October 18, 2026
+
+This pass did the method-body decompilation that had not completed on macOS: there, Hopper and `inspect_macho` timed out on the ARM64 framework. The target was the Steam build's `GameAssembly.dll` (106 MB, SHA-256 `87ff5d4159ef85980d23a3015096fcac43543761ac59fe88af5c774de4205749`), Unity `6000.0.58f2`, IL2CPP metadata v31.
+
+### Method
+
+- **Names and offsets:** Il2CppDumper v6.7.46 (net7 build on a portable .NET 8 runtime with roll-forward, under `~/.cache/snapcompanion-tools/`) read the metadata and produced `dump.cs` with an RVA for every method and an offset for every field, `script.json`, and `il2cpp.h`.
+- **Ghidra through REA:** REA's managed Ghidra session did not finish import plus default auto-analysis within its 330 s startup deadline and 2 GB heap, so it returned no results.
+- **Ghidra headless:** Ghidra 12.1.2 headless with `-noanalysis` instead. A post-script (`.build/static-x86/SnapDecompile.java`) applied the 526,708 Il2CppDumper names as labels, disassembled only the requested entry points, and ran the decompiler on them. Outputs are in `.build/static-x86/out{1,2,3}.c`.
+
+Without auto-analysis there are no cross-references, so callers were not enumerated. Field meanings below come from `dump.cs` offsets.
+
+### Findings
+
+- **`RemoteGame.OnConnectionMessageReceived(object, string)`** (VA 0x180699C20): the handler takes the frame as a `string`, logs its length, and deserializes it with `Serialization.ToObject<Message>`. A `Notification` goes to `ProcessNotification` and a `Response` goes to `ProcessResponse`. Anything else logs `Unhandled Message` and calls `TryInGameReconnect`. A `SimulateNetworkFailures` debug check runs first. This confirms in native code the text-only receive path concluded in the MemoryPack section.
+- **`Game.GetChangesForPlayer(accountId)`** (0x183592890, plus a static overload at 0x183592A70): returns `_changes` (`List<(string accountId, Change)>` at `Game+0x180`) filtered by a lambda (0x1835C1AF0) that keeps an entry when **its account is null (broadcast) or equals `accountId`** (inline ordinal string compare). It then projects `Item2`. This is the recipient filter the visibility section inferred, now read from the method body.
+- **`Card.RevealTo(Player)`** (0x1834C6520): if the player's entity id is not already in `_visibleToPlayerEntityIds` (`Card+0x1F0`), it calls `Game.AddChange(player.PlayerInfo.AccountId, GetGameRevealCardChange())`, which is **a reveal addressed to that one account**, and records the id.
+- **`Card.IsVisibleTo(Player)`** (0x1834C3180): returns true if the player is in `_visibleToPlayerEntityIds`. Otherwise it depends on `GetVisibility()`: 2 means visible to all, 1 means visible to the owner only (same account and entity id), and 0 means hidden.
+- **`Game.AddChange(accountId, change)`** (0x18358ADC0):
+  - **Hidden ability sources:** for a `VfxChange` emitted while an ability is active, `AddAbilityContext` is attached only if the ability's source card `IsVisibleTo` the recipient. Effects caused by cards the recipient cannot see therefore carry **no ability source**. This explains the earlier VFX audit result that no ability source tied to a known card preceded its first reveal.
+  - **Seen-card bookkeeping:** every change then passes through `CheckGameRevealCardChange` (0x18359EF00) before it is appended with its account. For a `GameRevealCardChange`, that helper calls `Player.AddCardDefIdSeen(CardDefId @0x18, ArtVariantDefId @0x30)` for the addressed player, or for every player when the reveal is a broadcast.
+- **`CardsSeen` (closed):** `CardsSeen` is fed **only** by reveal changes, with exactly the recipient scoping that reveals have. It cannot hold an identity the player was not sent as a reveal. This closes the CardsSeen question in code, beyond the capture-based comparison in the CardsSeen section.
+
+### Limits
+
+All of these are shared `CubeGame` logic shipped in the client. As before, the server binary was not inspected, and that the server runs this same code is inferred, not observed. Callers and indirect dispatch were not enumerated, because no auto-analysis was run. The `Select` projection lambda (`b__534_1`) is code-folded with an identical `ImmutableSortedDictionary` lambda at 0x180641140 (`return tuple.Item2`).
+
+### Call graph with full auto-analysis (REA + Ghidra)
+
+The REA Ghidra session was rerun with `REA_GHIDRA_STARTUP_TIMEOUT_MS=14400000`, `GHIDRA_HEADLESS_MAXMEM=16G` and `REA_GHIDRA_DISABLED_ANALYZERS=Function ID,Embedded Media,Call Convention ID`, set in the user-scope MCP config. Default auto-analysis then completed. Caller addresses were mapped to IL2CPP names through Il2CppDumper's `script.json`. REA evidence was saved to `.build/static-x86/GameAssembly-57.17.rea-snapshot`.
+
+**`Card.RevealTo` has 31 direct callers.** They fall into three groups, and together they list the shared-logic paths that hand a specific player a card identity:
+
+- **Normal play:** `Fsm.EndSinglePlayerStaging.RevealCardsStagedThisTurn` reveals the cards staged this turn. `Game.CompleteCardCreation` reveals created cards, and `Game.ResurrectCardInternal` (plus its `Move` local function) reveals resurrected cards.
+- **Card abilities that reveal cards** before or outside a normal play:
+  - Agamotto (`AddSpells`, `Spell02…BuffAndDraw`), Arishem (`AddEnergyAndCards`), Blob (`MergeDeck`), Forge, Maverick and Stick (`BuffCard`).
+  - Galactus First Steps (`ChooseHerald`, `UpdateHerald`), High Evolutionary (`UnlockAbility`), Hulkling (`CopyAtGameStart`), Kang (`ReplaceKang`), MoiraX (`PlayTargetCardProximity` lambda), Nightmare (`ReplaceCardText`).
+  - Nico Minoru (`PrepareNewSpell` and spells 01–07), Shang-Chi Master of the Rings (`AddRingsToHand`), Thanos Champion (`AddInfinityStones`), Thanos Fractured Frontier (`FireLoadedShots`), and Zombie Galacti (`ChooseDeckCards`, `SetChosenCardPower`).
+- **Consistency with the captures:** the Shang-Chi → TenRings and Arishem → Viv creator inferences observed in captures sit on these paths. The list is the static inventory of where `opponentInferredDeckCards`-style inference can find early, legitimate identity signals.
+
+**`Game.GetChangesForPlayer(accountId)` has 5 direct callers:**
+
+- `CubeUnity.App.Game.LocalGame.SendChangeNotification`
+- `Game.HandleGetChangesRequest`
+- `Game.<GetChangeCounts>b__535_1`
+- `Fsm.WaitForStaging.HandleRequest`
+- `Fsm.WaitForStaging.HandleStageEntityRequest`
+
+The static overload has no direct callers. The request handlers are the server role of the shared logic. `LocalGame` is a client-side game host, a counterpart of `RemoteGame`. When the client hosts a game locally, the same per-account filter decides what the UI receives. Online matches use `RemoteGame` (the path observed in every capture and in `Player.log`), where filtering happens before the data leaves the server.
+
+Not done: callers of `Game.AddChange` (expected to be very broad) and what selects `LocalGame` over `RemoteGame` (presumably tutorial or offline modes; not verified).
